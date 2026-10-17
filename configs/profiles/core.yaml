@@ -1,0 +1,114 @@
+# core — the headline matrix, hours (requirements.md §4.2).
+# This is the profile the README publishes. `full` ships only if it completes.
+#
+# Ordering is shuffled with a recorded seed so that GPU temperature drift cannot be
+# confounded with format (§6.2).
+name: core
+description: The published matrix — Tiers A/B/C, batch and context sweeps, KV and imatrix ablations.
+seed: 1337
+order: shuffle
+hardware: 5070ti
+
+protocol:
+  warmup_iters: 2
+  measured_iters: 5
+  cooldown_target_c: 50
+  cooldown_timeout_s: 300
+  clocks_locked: false
+  timeout_s: 2400
+  sample_hz: 10.0
+
+cells:
+  # -- Tier A: the anchor. Full matrix, including live BF16. --------------------------
+  - name: tierA-quality
+    models: [qwen3-4b]
+    formats:
+      ["bf16:reference", "gguf:Q8_0", "gguf:Q6_K", "gguf:Q5_K_M", "gguf:Q4_K_M",
+       "gguf:Q4_K_M-imat", "gguf:IQ4_XS", "awq:INT4", "gptq:INT4", "nf4:NF4",
+       "exl3:3.0", "exl3:4.0", "exl3:5.0", "exl3:6.0"]
+    workloads:
+      - kind: quality
+        eval_config: wikitext2
+
+  - name: tierA-latency
+    models: [qwen3-4b]
+    formats:
+      ["gguf:Q8_0", "gguf:Q5_K_M", "gguf:Q4_K_M", "gguf:Q4_K_M-imat", "gguf:IQ4_XS",
+       "awq:INT4", "gptq:INT4", "nf4:NF4", "exl3:4.0", "exl3:6.0"]
+    workloads:
+      - kind: latency
+        # Batch 1 is the local-user regime and must not be buried (§4.2).
+        batch_size: [1, 2, 4, 8]
+        prompt_tokens: [512, 2048]
+        generate_tokens: [128]
+
+  # -- Tier B: the realistic 16 GB workhorse. ----------------------------------------
+  - name: tierB-quality
+    models: [qwen3-8b]
+    formats:
+      ["gguf:Q6_K", "gguf:Q5_K_M", "gguf:Q4_K_M", "gguf:Q4_K_M-imat", "gguf:IQ4_XS",
+       "awq:INT4", "gptq:INT4", "exl3:4.0", "exl3:5.0"]
+    workloads:
+      - kind: quality
+        eval_config: wikitext2
+
+  - name: tierB-latency
+    models: [qwen3-8b]
+    formats:
+      ["gguf:Q5_K_M", "gguf:Q4_K_M", "gguf:IQ4_XS", "awq:INT4", "gptq:INT4", "exl3:4.0"]
+    workloads:
+      - kind: latency
+        batch_size: [1, 4, 16]
+        prompt_tokens: [512, 2048, 8192]
+        generate_tokens: [128]
+
+  # -- KV-cache dtype sweep (H4). Split by engine because the dtype vocabularies differ.
+  - name: tierB-kv-sweep-gguf
+    models: [qwen3-8b]
+    formats: ["gguf:Q4_K_M"]
+    kv_cache_dtypes: [f16, q8_0, q4_0]
+    workloads:
+      - kind: latency
+        batch_size: [1]
+        prompt_tokens: [2048, 8192]
+        generate_tokens: [128]
+      - kind: quality
+        eval_config: wikitext2
+
+  - name: tierB-kv-sweep-vllm
+    models: [qwen3-8b]
+    formats: ["awq:INT4"]
+    kv_cache_dtypes: [auto, fp8]
+    workloads:
+      - kind: latency
+        batch_size: [1, 16]
+        prompt_tokens: [2048, 8192]
+        generate_tokens: [128]
+
+  # -- Attention backend is a recorded variable, swept on one Tier B config (§3.2). ---
+  - name: tierB-attention-backends
+    models: [qwen3-8b]
+    formats: ["awq:INT4"]
+    attention_backends: [flash_attn, flashinfer, triton]
+    workloads:
+      - kind: latency
+        batch_size: [1]
+        prompt_tokens: [2048]
+        generate_tokens: [128]
+
+  # -- Tier C: what actually fits. OOMs here are the result. -------------------------
+  - name: tierC-context-cliff
+    models: [qwen3-14b]
+    formats: ["gguf:Q5_K_M", "gguf:Q4_K_M", "gguf:IQ4_XS", "awq:INT4", "exl3:4.0"]
+    workloads:
+      - kind: latency
+        batch_size: [1]
+        prompt_tokens: [2048, 8192, 32768]
+        generate_tokens: [128]
+
+  - name: tierC-quality
+    models: [qwen3-14b]
+    formats: ["gguf:Q4_K_M", "gguf:IQ4_XS", "exl3:4.0"]
+    workloads:
+      - kind: quality
+        eval_config: wikitext2

@@ -1,0 +1,20 @@
+# BF16/FP16 reference (requirements.md §4.2, first row of the matrix).
+# Tier A runs this live on-GPU; Tiers B and C use it once, with CPU offload, to build the
+# cached reference logits that every KL number is measured against (§5.2).
+family: bf16
+producer: null
+producer_module: null
+default_engines: [transformers]
+supported_engines: [transformers, llama.cpp]
+scoring_engine: null
+artifact_pattern: null
+
+kv_cache_dtypes: [auto]
+attention_backends: [sdpa, eager]
+
+variants:
+  - id: reference
+    bits_nominal: 16
+    notes: >
+      The anchor for every quality number. An 8B model in BF16 does not fit in 16 GB, so
+      on Tier B/C this variant only ever runs as a one-off cached-reference build.

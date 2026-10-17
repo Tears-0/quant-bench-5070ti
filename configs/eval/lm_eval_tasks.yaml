@@ -1,0 +1,40 @@
+# Downstream accuracy via lm-evaluation-harness (requirements.md §5.2).
+# Scores are reported in absolute terms AND as retention % vs the FP16 reference; the
+# retention figure is the one that answers "what did quantization cost me".
+name: lm_eval_tasks
+kind: lm_eval
+source_kind: local_file
+source: "(tasks are fetched by lm-eval itself)"
+
+lm_eval_tasks:
+  - task: arc_challenge
+    num_fewshot: 0
+    primary_metric: acc_norm
+  - task: hellaswag
+    num_fewshot: 0
+    primary_metric: acc_norm
+  - task: gsm8k
+    num_fewshot: 8
+    primary_metric: exact_match
+  # A fixed, named MMLU subset bounds runtime and keeps the number comparable across
+  # every configuration. Do not change this list without re-running every configuration.
+  - task: mmlu_abstract_algebra
+    num_fewshot: 5
+    primary_metric: acc
+  - task: mmlu_college_computer_science
+    num_fewshot: 5
+    primary_metric: acc
+  - task: mmlu_high_school_mathematics
+    num_fewshot: 5
+    primary_metric: acc
+  - task: mmlu_professional_law
+    num_fewshot: 5
+    primary_metric: acc
+  - task: mmlu_world_religions
+    num_fewshot: 5
+    primary_metric: acc
+
+notes: >
+  Requires lm-eval, installed with requirements/hf.txt. Greedy decoding throughout. The primary metric per task is
+  pinned in code (metrics/quality.py) so a harness version bump cannot silently change
+  which number the repo publishes.

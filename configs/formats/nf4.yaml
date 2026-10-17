@@ -1,0 +1,19 @@
+# NF4 (bitsandbytes) — the convenience baseline (requirements.md §4.2).
+# Widely used, usually poor on latency. Included so the comparison covers what people
+# actually reach for, not only what performs well. Inference only: QLoRA training is a
+# non-goal (§2).
+family: nf4
+producer: null              # applied at load time, no artifact is produced
+producer_module: null
+default_engines: [transformers]
+supported_engines: [transformers]
+scoring_engine: null
+artifact_pattern: null
+
+kv_cache_dtypes: [auto]
+attention_backends: [sdpa, eager]
+
+variants:
+  - id: NF4
+    bits_nominal: 4
+    notes: double quantization on, bf16 compute dtype.

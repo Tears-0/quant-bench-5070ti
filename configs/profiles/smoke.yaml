@@ -1,0 +1,34 @@
+# smoke — minutes, ~10 runs (requirements.md §4.2, M1 acceptance).
+# Enough to prove the pipeline end to end: schema-valid records with non-null latency,
+# memory and power, and a working --resume.
+name: smoke
+description: Tier A, two GGUF variants, batch 1, one context length.
+seed: 1337
+order: shuffle
+hardware: 5070ti
+
+protocol:
+  warmup_iters: 1
+  measured_iters: 3
+  cooldown_target_c: 50
+  cooldown_timeout_s: 120
+  clocks_locked: false
+  timeout_s: 900
+  sample_hz: 10.0
+
+cells:
+  - name: tierA-smoke-latency
+    models: [qwen3-4b]
+    formats: ["gguf:Q4_K_M", "gguf:Q8_0"]
+    workloads:
+      - kind: latency
+        batch_size: [1]
+        prompt_tokens: [512]
+        generate_tokens: [128]
+
+  - name: tierA-smoke-quality
+    models: [qwen3-4b]
+    formats: ["gguf:Q4_K_M", "gguf:Q8_0"]
+    workloads:
+      - kind: quality
+        eval_config: wikitext2

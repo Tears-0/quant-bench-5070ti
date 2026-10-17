@@ -1,0 +1,28 @@
+# EXL3 / ExLlamaV3 (requirements.md §4.2).
+# Trellis/QTIP-based, and the strongest quality-per-bit contender in the matrix. Its
+# continuous bpw knob is what makes figure 2 (quality vs effective bpw) a curve rather
+# than four disconnected points.
+family: exl3
+producer: exllamav3/convert.py
+producer_module: quantbench.quantize.exl3
+default_engines: [exllamav3]
+supported_engines: [exllamav3]
+scoring_engine: null         # ExLlamaV3 scores in-process
+artifact_pattern: "models/{model_slug}/{model_slug}-exl3-{variant_lower}bpw"
+
+kv_cache_dtypes: [fp16, q8_0, q4_0]
+attention_backends: [flash_attn]
+
+variants:
+  - id: "3.0"
+    bits_nominal: 3.0
+  - id: "4.0"
+    bits_nominal: 4.0
+  - id: "5.0"
+    bits_nominal: 5.0
+  - id: "6.0"
+    bits_nominal: 6.0
+
+notes: >
+  All four bpw levels are converted from the same source checkpoint with identical
+  calibration settings, so bits-per-weight is the only variable across the curve.

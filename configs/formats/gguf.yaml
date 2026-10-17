@@ -1,0 +1,44 @@
+# GGUF / llama.cpp (requirements.md §4.2).
+# Produced locally with llama-quantize from one F16 conversion, so the imatrix ablation
+# compares artifacts that differ in exactly one thing.
+family: gguf
+producer: llama-quantize
+producer_module: quantbench.quantize.gguf
+default_engines: [llama.cpp]
+supported_engines: [llama.cpp]
+scoring_engine: null          # llama-perplexity scores GGUF natively
+artifact_pattern: "models/{model_slug}/{model_slug}-{variant_lower}.gguf"
+
+kv_cache_dtypes: [f16, q8_0, q4_0]
+attention_backends: [cuda-fa, cuda-nofa]
+
+variants:
+  - id: F16
+    bits_nominal: 16
+    notes: llama.cpp-side reference; lets PPL be compared within-engine without crossing harnesses.
+  - id: Q8_0
+    bits_nominal: 8
+    notes: near-lossless upper anchor.
+  - id: Q6_K
+    bits_nominal: 6
+  - id: Q5_K_M
+    bits_nominal: 5
+  - id: Q4_K_M
+    bits_nominal: 4
+    notes: the de facto default; must be characterized precisely.
+  - id: Q4_K_M-imat
+    bits_nominal: 4
+    imatrix: true
+    calibration_dataset: c4-en-512seq
+    notes: >
+      Paired with plain Q4_K_M to isolate the importance-matrix effect. Same F16 source,
+      same llama-quantize build, calibration disjoint from the evaluation stream (§6.7).
+  - id: IQ4_XS
+    bits_nominal: 4
+    imatrix: true
+    calibration_dataset: c4-en-512seq
+    notes: i-quant; tests whether an imatrix at lower bpw beats larger K-quants.
+
+notes: >
+  Consumed as pinned pre-built binaries invoked as subprocesses, not as a Python binding
+  (§11.1). Note the renamed binaries: llama-cli / llama-server / llama-quantize.

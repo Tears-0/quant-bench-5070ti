@@ -1,0 +1,24 @@
+# Long-context retrieval probe — stretch goal (requirements.md §5.2, §13.7).
+# Catches degradation that short-context perplexity misses entirely, which is exactly the
+# damage KV-cache quantization is suspected of doing.
+name: longctx
+kind: longctx
+source_kind: local_file
+source: "calib/longctx-haystack.txt"
+
+ppl:
+  ctx: 32768
+  stride: 32768
+  add_bos: true
+  max_tokens: null
+
+reference:
+  topk: 128
+
+calibration_disjoint_from:
+  - wikitext-2-raw-v1
+
+notes: >
+  Needle-in-haystack style retrieval at 8k and 32k. Scheduled after M5; until it runs, the
+  corresponding cells stay out of the core profile and the README says so rather than
+  implying long-context behaviour was measured.

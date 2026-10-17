@@ -1,0 +1,36 @@
+# The quality evaluation stream (requirements.md §5.2, §6.6).
+#
+# Every quality number in the repo is computed over ONE byte-identical, pre-tokenized
+# stream built from this file. Different tokenization of "the same" WikiText-2 is a real
+# and frequently-missed source of perplexity discrepancy between tools, so the token ids
+# are hashed and the hash is recorded in every quality record.
+name: wikitext2
+kind: ppl_kl
+
+# Default is a local file so the core dependency set stays as listed in §11.1. Download
+# the raw test split once and point this at it; `hf_dataset` is available but needs the
+# optional `datasets` package (see docs/open-questions.md).
+source_kind: local_file
+source: "calib/wikitext-2-raw-test.txt"
+subset: wikitext-2-raw-v1
+split: test
+
+ppl:
+  # Recorded verbatim into every record: PPL is not comparable across tools without them.
+  ctx: 2048
+  stride: 2048          # non-overlapping windows; no sliding-window credit
+  add_bos: true
+  max_tokens: 335000
+
+reference:
+  topk: 128             # reference support retained for KL; tail mass is measured
+  store_dtype: float16
+
+# Calibration data for AWQ/GPTQ/imatrix/EXL3 must not come from these sources (§6.7).
+calibration_disjoint_from:
+  - wikitext-2-raw-v1
+  - wikitext2
+
+notes: >
+  KL divergence against the FP16 reference is the primary quality metric; perplexity is
+  reported alongside it because it is familiar, not because it is the better instrument.

@@ -1,0 +1,25 @@
+# FP8 W8A8 — CONDITIONAL (requirements.md §3.2, §12).
+# GB203 has FP8 tensor cores, but vLLM's cutlass_scaled_mm path for block-scaled FP8 has
+# had sm_120 gaps. Nothing here promises FP8 works; the matrix verifies it empirically and
+# a failure is published as a finding with the exact kernel error.
+family: fp8
+producer: llm-compressor
+producer_module: quantbench.quantize.compressor
+default_engines: [vllm]
+supported_engines: [vllm]
+scoring_engine: transformers
+artifact_pattern: "models/{model_slug}/{model_slug}-fp8"
+conditional: true
+
+kv_cache_dtypes: [auto, fp8]
+attention_backends: [auto, flash_attn, triton]
+
+variants:
+  - id: W8A8
+    bits_nominal: 8
+    notes: dynamic activation scales, so no calibration data is required.
+
+notes: >
+  If the server refuses to start, the run is recorded as engine_unsupported/build_failed
+  with stderr attached, and the format is dropped from the core matrix with the reason
+  written into docs/failures.md.

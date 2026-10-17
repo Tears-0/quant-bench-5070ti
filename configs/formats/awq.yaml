@@ -1,0 +1,25 @@
+# AWQ INT4 (W4A16) — produced by llm-compressor, served by vLLM's awq_marlin path.
+# AutoAWQ is deprecated/archived and is NOT used (requirements.md §4.2).
+family: awq
+producer: llm-compressor
+producer_module: quantbench.quantize.compressor
+default_engines: [vllm]
+supported_engines: [vllm, transformers]
+
+# vLLM's native scoring only exposes its own top-k, so quality is routed to the designated
+# scoring engine and the record carries scored_by_engine (§7.2).
+scoring_engine: transformers
+artifact_pattern: "models/{model_slug}/{model_slug}-awq-int4"
+
+kv_cache_dtypes: [auto, fp8]
+attention_backends: [auto, flash_attn, flashinfer, triton]
+
+variants:
+  - id: INT4
+    bits_nominal: 4
+    calibration_dataset: c4-en-512seq
+    notes: W4A16, group size 128, lm_head excluded.
+
+notes: >
+  Community reports indicate AWQ works on sm_120 through awq_marlin, sometimes only with
+  the Triton attention backend rather than FlashAttention — hence the backend sweep (§3.2).

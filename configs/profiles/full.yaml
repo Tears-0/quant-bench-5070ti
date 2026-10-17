@@ -1,0 +1,67 @@
+# full — everything, overnight+ (requirements.md §4.2).
+# The full cross-product is combinatorially infeasible; this is the widest sweep that is
+# still finite. It ships only if it completes — otherwise `core` is what the README shows.
+name: full
+description: Every format, every batch size, every context length, plus the family sanity check.
+seed: 1337
+order: round_robin        # round-robin across formats as an alternative to shuffling
+hardware: 5070ti
+
+protocol:
+  warmup_iters: 2
+  measured_iters: 5
+  cooldown_target_c: 50
+  cooldown_timeout_s: 300
+  clocks_locked: false
+  timeout_s: 5400
+  sample_hz: 10.0
+
+cells:
+  - name: tierA-full-latency
+    models: [qwen3-4b]
+    formats:
+      ["bf16:reference", "gguf:Q8_0", "gguf:Q6_K", "gguf:Q5_K_M", "gguf:Q4_K_M",
+       "gguf:Q4_K_M-imat", "gguf:IQ4_XS", "awq:INT4", "gptq:INT4", "nf4:NF4",
+       "exl3:3.0", "exl3:4.0", "exl3:5.0", "exl3:6.0"]
+    workloads:
+      - kind: latency
+        batch_size: [1, 2, 4, 8, 16, 32]
+        prompt_tokens: [512, 2048, 8192, 32768]
+        generate_tokens: [128, 512]
+
+  - name: tierB-full-latency
+    models: [qwen3-8b]
+    formats:
+      ["gguf:Q6_K", "gguf:Q5_K_M", "gguf:Q4_K_M", "gguf:Q4_K_M-imat", "gguf:IQ4_XS",
+       "awq:INT4", "gptq:INT4", "fp8:W8A8", "exl3:3.0", "exl3:4.0", "exl3:5.0", "exl3:6.0"]
+    workloads:
+      - kind: latency
+        batch_size: [1, 2, 4, 8, 16, 32]
+        prompt_tokens: [512, 2048, 8192, 32768]
+        generate_tokens: [128, 512]
+      - kind: quality
+        eval_config: wikitext2
+
+  - name: tierC-full
+    models: [qwen3-14b]
+    formats: ["gguf:Q6_K", "gguf:Q5_K_M", "gguf:Q4_K_M", "gguf:IQ4_XS", "awq:INT4",
+              "gptq:INT4", "exl3:3.0", "exl3:4.0"]
+    workloads:
+      - kind: latency
+        batch_size: [1, 4, 16]
+        prompt_tokens: [2048, 8192, 32768]
+        generate_tokens: [128]
+      - kind: quality
+        eval_config: wikitext2
+
+  # Architecture-diversity check: are the findings Qwen-specific? (§13.1)
+  - name: family-sanity-check
+    models: [llama-3.2-3b-instruct]
+    formats: ["bf16:reference", "gguf:Q4_K_M", "gguf:Q5_K_M", "awq:INT4", "exl3:4.0"]
+    workloads:
+      - kind: latency
+        batch_size: [1]
+        prompt_tokens: [512, 2048]
+        generate_tokens: [128]
+      - kind: quality
+        eval_config: wikitext2

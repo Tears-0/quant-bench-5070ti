@@ -1,0 +1,31 @@
+# Reference hardware (requirements.md §3.1).
+# Every field here is an *expectation* that preflight checks against detected reality.
+# Nothing in this file is trusted as a measurement: the run record always carries what was
+# actually detected on the machine.
+name: rtx-5070ti
+gpu_name_match: "RTX 5070 Ti"
+compute_capability: "12.0"
+required_torch_arch: "sm_120"
+
+# Nominal board memory. ~15.5 GiB is usable after display/compositor overhead (§3.3).
+vram_total_mb: 16303
+vram_usable_mb: 15872
+
+min_driver: "570.0"
+min_cuda_runtime: "12.8"
+min_free_disk_gb: 300
+
+thermal:
+  # Inter-run cooldown gate: GPU temperature drifts over a long session and would
+  # otherwise be confounded with whatever format happens to run late (§6.2, §6.3).
+  cooldown_target_c: 50
+  cooldown_timeout_s: 300
+  mark_throttled_invalid: true
+
+# One NVML sampling loop serves both memory (>=5 Hz, §5.3) and power (>=10 Hz, §5.4).
+sample_hz: 10.0
+
+# Clock locking requires permissions that consumer drivers often withhold. A locked-clock
+# run and a boost-clock run are not comparable, so this is opt-in and recorded per run.
+allow_clock_lock: false
+locked_sm_clock_mhz: null

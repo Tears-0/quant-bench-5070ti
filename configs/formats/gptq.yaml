@@ -1,0 +1,23 @@
+# GPTQ INT4 (W4A16) — produced by GPTQModel.
+# AutoGPTQ is archived and is NOT used (requirements.md §4.2). GPTQModel is the maintained
+# successor and carries the Blackwell-era kernel work.
+family: gptq
+producer: GPTQModel
+producer_module: quantbench.quantize.gptqmodel
+default_engines: [vllm]
+supported_engines: [vllm, transformers]
+scoring_engine: transformers
+artifact_pattern: "models/{model_slug}/{model_slug}-gptq-int4"
+
+kv_cache_dtypes: [auto, fp8]
+attention_backends: [auto, flash_attn, triton]
+
+variants:
+  - id: INT4
+    bits_nominal: 4
+    calibration_dataset: c4-en-512seq
+    notes: bits=4, group_size=128, desc_act=true, symmetric.
+
+notes: >
+  Also the INT4 fallback path if vLLM cannot be made to work on sm_120: the same
+  checkpoint runs through Transformers (§12.1).
