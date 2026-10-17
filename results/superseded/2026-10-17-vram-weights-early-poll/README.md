@@ -1,0 +1,1 @@
+﻿Superseded M1 smoke records (2026-10-17). Produced before vram_weights_mb switched from a single device-wide NVML poll at load (unreliable under WDDM: Q8_0 read 3500 MB against a 4275 MB attributed peak) to llama.cpp's engine-reported GPU model buffer. All other fields were valid. Kept for transparency; not read by the analysis layer. See docs/failures.md.

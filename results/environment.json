@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "environment": {
+    "driver": "617.14",
+    "cuda_runtime": null,
+    "torch": null,
+    "torch_arch_list": [],
+    "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_uuid": "GPU-943140c6-55d3-370c-56e4-67efaeeab433",
+    "vram_total_mb": 16303,
+    "is_wsl": false,
+    "cpu": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "ram_gb": 31.3,
+    "os": "Windows 11",
+    "python": "3.12.13",
+    "hostname": "DESKTOP-7IMNI54",
+    "nvml_driver": "617.14",
+    "timestamp_utc": "2026-10-17T05:44:08Z"
+  },
+  "environment_hash": "sha256:0c2ba869992b71f7147332e458af295e8df1714f61cbc6e95527d6773956daff",
+  "checks": [
+    {
+      "name": "gpu",
+      "severity": "ok",
+      "detail": "NVIDIA GeForce RTX 5070 Ti (16303 MB)",
+      "hint": null
+    },
+    {
+      "name": "gpu.model",
+      "severity": "ok",
+      "detail": "NVIDIA GeForce RTX 5070 Ti",
+      "hint": null
+    },
+    {
+      "name": "driver",
+      "severity": "ok",
+      "detail": "617.14",
+      "hint": null
+    },
+    {
+      "name": "torch",
+      "severity": "warn",
+      "detail": "torch is not installed (No module named 'torch')",
+      "hint": "only needed by the Transformers, vLLM and ExLlamaV3 engines; install one of requirements/hf.txt, requirements/vllm.txt or requirements/exl3.txt"
+    },
+    {
+      "name": "wsl",
+      "severity": "ok",
+      "detail": "native",
+      "hint": null
+    },
+    {
+      "name": "disk",
+      "severity": "ok",
+      "detail": "333 GB free at D:\\Projects\\quant-bench-5070ti\\models (want >= 300 GB for the model cache)",
+      "hint": "quantized artifacts run to hundreds of GB; see 'quantbench models prune'"
+    },
+    {
+      "name": "binary.llama-server",
+      "severity": "ok",
+      "detail": "D:\\Projects\\quant-bench-5070ti\\tools\\llama.cpp\\b11706\\bin\\llama-server.exe",
+      "hint": null
+    },
+    {
+      "name": "binary.llama-perplexity",
+      "severity": "ok",
+      "detail": "D:\\Projects\\quant-bench-5070ti\\tools\\llama.cpp\\b11706\\bin\\llama-perplexity.exe",
+      "hint": null
+    },
+    {
+      "name": "binary.llama-quantize",
+      "severity": "ok",
+      "detail": "D:\\Projects\\quant-bench-5070ti\\tools\\llama.cpp\\b11706\\bin\\llama-quantize.exe",
+      "hint": null
+    },
+    {
+      "name": "binary.llama-imatrix",
+      "severity": "ok",
+      "detail": "D:\\Projects\\quant-bench-5070ti\\tools\\llama.cpp\\b11706\\bin\\llama-imatrix.exe",
+      "hint": null
+    }
+  ],
+  "extra": {
+    "torch": {
+      "available": false,
+      "error": "No module named 'torch'"
+    }
+  }
+}
