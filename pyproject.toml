@@ -1,0 +1,99 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quantbench"
+version = "0.1.0"
+description = "Consumer-GPU quantization & inference benchmark suite (RTX 5070 Ti, sm_120)"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "quant-bench-5070ti contributors" }]
+
+# Core dependencies only. Anything that needs CUDA lives in an optional extra and is
+# imported lazily inside the worker subprocess (requirements.md §11.1).
+dependencies = [
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "pandas>=2.2",
+    "pyarrow>=16.0",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+    "nvidia-ml-py>=12.560.30",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5", "mypy>=1.10", "types-PyYAML", "pandas-stubs"]
+
+# Engine dependencies are deliberately NOT declared as extras here.
+#
+# §11.2 asks for one isolated dependency set per engine because their torch requirements
+# conflict. A single uv lockfile cannot express that: uv resolves every extra together,
+# and resolving vLLM requires building it, which fails on any machine without CUDA_HOME —
+# i.e. the CLI would become uninstallable on exactly the machine that needs `quantbench
+# preflight` to explain why. The engine sets therefore live in requirements/<engine>.txt,
+# installed into the engine's own environment:
+#
+#     uv pip install -r requirements/vllm.txt      # see docs/install/vllm.md
+#     uv pip install -r requirements/hf.txt
+#     uv pip install -r requirements/exl3.txt
+#
+# llama.cpp has no Python dependency surface at all: it is consumed as pinned, pre-built
+# binaries invoked as subprocesses (§11.1). See docs/open-questions.md, Q8.
+
+[project.scripts]
+quantbench = "quantbench.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quantbench"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF", "ANN"]
+ignore = [
+    "ANN401", # typer/pydantic surfaces occasionally need Any
+    "B008",   # typer uses function calls in argument defaults by design
+    "N818",   # EngineOOM / EngineUnsupported / NvmlUnavailable read better without "Error"
+    "RUF001", # em dashes and arrows are used deliberately in prose
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN", "E501"]
+
+[tool.mypy]
+# No python_version pin: mypy checks against the interpreter in use (3.11 or 3.12), and
+# numpy's bundled stubs require the 3.12 syntax level when running under 3.12.
+strict = true
+files = ["src/quantbench"]
+warn_unreachable = true
+show_error_codes = true
+
+# Engine and quantizer shims wrap third-party libraries that have no stubs and cannot be
+# imported in CI. §11.3 exempts them from --strict.
+[[tool.mypy.overrides]]
+module = ["quantbench.engines.*", "quantbench.quantize.*"]
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*", "transformers.*", "vllm.*", "exllamav3.*", "gptqmodel.*",
+    "llmcompressor.*", "bitsandbytes.*", "pynvml.*", "matplotlib.*", "lm_eval.*",
+    "datasets.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error::DeprecationWarning:quantbench.*"]

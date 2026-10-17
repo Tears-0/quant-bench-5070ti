@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Model weights and quantized artifacts are huge and provenance-tracked, never committed.
+models/
+calib/*.dat
+*.gguf
+*.safetensors
+*.bin
+
+# Reference logit caches (regenerable, GBs)
+reference_cache/
+
+# Planning scratch
+plan.*.json
+
+# Dry-run output is synthetic by construction and must never be mixed with real results.
+results/dryrun/
+
+# Session logs
+logs/
+
+# Pinned third-party binaries and source (llama.cpp release zips etc.); see docs/install/
+tools/
+.venv-*/

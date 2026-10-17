@@ -1,0 +1,25 @@
+# HuggingFace Transformers engine + NF4 baseline (docs/install/transformers.md).
+#
+# Install into a dedicated environment, NOT alongside the vLLM or ExLlamaV3 sets — their
+# torch pins conflict (requirements.md §11.2).
+#
+#   uv venv .venv-hf --python 3.12
+#   uv pip install -r requirements/hf.txt --python .venv-hf
+#
+# torch MUST be a cu128-or-newer build that carries sm_120 kernels; `quantbench preflight`
+# asserts this and refuses to run otherwise (§3.2).
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+-e .
+torch>=2.7.0
+transformers>=4.51.0
+accelerate>=1.0.0
+bitsandbytes>=0.45.0
+lm-eval>=0.4.8
+datasets>=3.0.0
+huggingface_hub>=0.30.0
+# llama.cpp's convert_hf_to_gguf.py imports sentencepiece unconditionally, even for BPE
+# tokenizers like Qwen3 (see docs/failures.md). Its gguf-py is installed from the pinned
+# source tree: uv pip install -e tools/llama.cpp/<tag>/src/llama.cpp-<tag>/gguf-py
+sentencepiece>=0.1.98,<0.3.0
+protobuf>=4.21.0,<5.0.0

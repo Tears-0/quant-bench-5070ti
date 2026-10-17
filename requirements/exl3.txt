@@ -1,0 +1,13 @@
+﻿# ExLlamaV3 engine + EXL3 producer (docs/install/exllamav3.md).
+#
+#   uv venv .venv-exl3 --python 3.12
+#   uv pip install -r requirements/exl3.txt --python .venv-exl3
+#
+# EXL3 conversion uses convert.py from an exllamav3 checkout; set EXLLAMAV3_REPO to it.
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+-e .
+torch>=2.7.0
+exllamav3>=0.0.4
+transformers>=4.51.0
+huggingface_hub>=0.30.0

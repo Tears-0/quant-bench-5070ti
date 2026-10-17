@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: "quant-bench-5070ti: a reproducible quantization and inference benchmark for a 16 GB consumer Blackwell GPU"
+message: "If you use these results or this methodology, please cite the repository and state the snapshot date — engine version churn makes any single run a dated snapshot."
+type: software
+authors:
+  - name: "quant-bench-5070ti contributors"
+license: MIT
+version: "0.1.0"
+repository-code: "https://github.com/USER/quant-bench-5070ti"
+abstract: >
+  A single-card benchmark matrix answering which quantization format and inference engine
+  to run on a 16 GB RTX 5070 Ti (Blackwell GB203, sm_120), and what each choice costs.
+  Covers GGUF K-quants and i-quants (with an isolated importance-matrix ablation), AWQ,
+  GPTQ, FP8, NF4 and EXL3 across llama.cpp, vLLM, ExLlamaV3 and HF Transformers. Quality is
+  measured primarily as KL divergence against a cached FP16 reference rather than
+  perplexity; latency is derived from per-token arrival timestamps; VRAM is reported as
+  four separate quantities including process-level NVML peak; efficiency is reported as
+  tokens per joule. Runs are subprocess-isolated, thermally gated and randomly interleaved,
+  and OOM is recorded as a result rather than treated as an error.
+keywords:
+  - quantization
+  - llm-inference
+  - benchmark
+  - gguf
+  - awq
+  - gptq
+  - exl3
+  - blackwell
+  - sm_120
+  - reproducibility
