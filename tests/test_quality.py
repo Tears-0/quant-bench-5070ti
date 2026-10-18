@@ -152,7 +152,11 @@ def test_lm_eval_primary_metric_is_pinned():
             "unscored": {"note": "n/a"},
         }
     }
+    payload["results"]["arc_challenge"]["acc_norm_stderr,none"] = 0.014
     parsed = quality.parse_lm_eval_output(payload)
     assert parsed["arc_challenge"] == 0.44  # acc_norm preferred over acc
+    assert parsed["arc_challenge_stderr"] == 0.014
     assert parsed["gsm8k"] == 0.31
+    assert parsed["gsm8k_stderr"] is None
     assert parsed["unscored"] is None
+    assert "unscored_stderr" not in parsed

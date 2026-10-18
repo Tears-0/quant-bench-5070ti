@@ -93,8 +93,37 @@ def rich_frame():
     return to_dataframe(records)
 
 
+def paired_fixture():
+    import pandas as pd
+
+    rows = []
+    for cand, delta, tied in (("gguf:Q8_0", 0.0, True), ("gguf:Q4_K_M", -0.02, False)):
+        for task in ("arc_challenge", "hellaswag", "gsm8k", "mmlu_subset"):
+            rows.append(
+                {
+                    "model": "Qwen3-4B",
+                    "candidate": cand,
+                    "task": task,
+                    "metric": "acc",
+                    "n": 100,
+                    "reference": 0.6,
+                    "score": 0.6 + delta,
+                    "delta": delta,
+                    "se": 0.005,
+                    "ci_low": delta - 0.01,
+                    "ci_high": delta + 0.01,
+                    "retention_pct": 100 * (0.6 + delta) / 0.6,
+                    "ref_only_correct": 3,
+                    "cand_only_correct": 1,
+                    "prompts_identical": True,
+                    "tied": tied,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def test_every_figure_is_produced_from_a_complete_dataset(tmp_path):
-    results = generate_all(rich_frame(), tmp_path)
+    results = generate_all(rich_frame(), tmp_path, paired=paired_fixture())
     assert len(results) == len(FIGURES)
     skipped = {r.name: r.reason for r in results if r.skipped}
     assert not skipped, f"unexpected skips: {skipped}"
@@ -107,8 +136,8 @@ def test_regeneration_is_byte_stable(tmp_path):
     frame = rich_frame()
     first = tmp_path / "a"
     second = tmp_path / "b"
-    generate_all(frame, first)
-    generate_all(frame, second)
+    generate_all(frame, first, paired=paired_fixture())
+    generate_all(frame, second, paired=paired_fixture())
     for path in sorted(first.glob("*")):
         other = second / path.name
         assert (

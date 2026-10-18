@@ -170,3 +170,27 @@ def test_hypotheses_report_says_insufficient_data_when_empty():
     section = report.hypotheses_section(pd.DataFrame())
     assert "insufficient data" in section.markdown
     assert "H2" in section.markdown
+
+
+def test_hypothesis_evidence_checks_data_not_columns():
+    records = [
+        make_record(make_spec(run_id="lat-q4", variant="Q4_K_M", bits=4)),
+        make_record(make_spec(run_id="lat-q8", variant="Q8_0", bits=8)),
+        make_record(make_spec(run_id="q-q4", variant="Q4_K_M", kind="quality", generate_tokens=0)),
+        make_record(make_spec(run_id="q-q8", variant="Q8_0", kind="quality", generate_tokens=0)),
+    ]
+    evidence = report.hypothesis_evidence(to_dataframe(records))
+    assert evidence["H1"].startswith("insufficient") and "Q5_K_M" in evidence["H1"]
+    assert evidence["H2"].startswith("preliminary (n=2")
+    assert evidence["H3"].startswith("insufficient") and "AWQ/GPTQ" in evidence["H3"]
+    assert evidence["H4"].startswith("insufficient")
+
+
+def test_recommendation_note_names_its_candidates_and_vram_mode():
+    records = [
+        make_record(make_spec(run_id="lat-q4", variant="Q4_K_M", bits=4)),
+        make_record(make_spec(run_id="q-q4", variant="Q4_K_M", kind="quality", generate_tokens=0)),
+    ]
+    section = report.recommendation_section(to_dataframe(records))
+    assert "Chosen from 1 candidate configuration(s) only" in section.markdown
+    assert "gguf:Q4_K_M (mock)" in section.markdown

@@ -5,7 +5,9 @@ family: gguf
 producer: llama-quantize
 producer_module: quantbench.quantize.gguf
 default_engines: [llama.cpp]
-supported_engines: [llama.cpp]
+# transformers: lm-eval only, loading the GGUF dequantized to fp16 (open question Q15 (a));
+# llama-server serves no prompt log-probs, so log-likelihood tasks cannot run on llama.cpp.
+supported_engines: [llama.cpp, transformers]
 scoring_engine: null          # llama-perplexity scores GGUF natively
 artifact_pattern: "models/{model_slug}/{model_slug}-{variant_lower}.gguf"
 

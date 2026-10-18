@@ -126,6 +126,7 @@ def make_record(
             reference_id="qwen3-4b-fp16@abc",
             eval_stream_sha="sha256:abc",
             ppl_wikitext2=ppl,
+            ppl_reference=9.0 if ppl is not None else None,
             kl_div=KLRecord(
                 mean=kl, p90=kl * 2 if kl else None, p99=kl * 4 if kl else None, topk=128
             ),

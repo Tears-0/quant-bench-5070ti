@@ -110,3 +110,33 @@ def test_update_model_config_preserves_comments(tmp_path):
     text = path.read_text(encoding="utf-8")
     assert changed == ["params_total", "revision"]
     assert text.startswith("# keep me") and "params_total: 42" in text and 'revision: "abc"' in text
+
+
+def test_wddm_accounting_mode_and_shared_peak():
+    from quantbench.metrics.memory import GpuSample, peak_shared_mb
+
+    s = GpuSample(
+        t_s=0.0,
+        device_used_mb=9000.0,
+        process_used_mb=2800.0,
+        power_w=None,
+        temp_c=None,
+        sm_clock_mhz=None,
+        throttle_bits=None,
+        shared_mb=80.0,
+        process_source="wddm",
+    )
+    spilled = GpuSample(
+        t_s=1.0,
+        device_used_mb=16000.0,
+        process_used_mb=15400.0,
+        power_w=None,
+        temp_c=None,
+        sm_clock_mhz=None,
+        throttle_bits=None,
+        shared_mb=3368.0,
+        process_source="wddm",
+    )
+    assert vram_accounting_mode([s]) == "per_process_wddm"
+    assert peak_shared_mb([s, spilled]) == 3368.0
+    assert peak_shared_mb([sample(0.0, dev=1.0)]) is None

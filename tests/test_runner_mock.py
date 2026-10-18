@@ -122,7 +122,9 @@ def test_failure_classification_from_worker_output():
     assert crash.stderr_tail == "Segmentation fault"
 
 
-def test_quality_workload_without_a_stream_is_unsupported_not_crashed(monkeypatch):
+def test_quality_workload_without_a_stream_is_unsupported_not_crashed(monkeypatch, tmp_path):
+    # isolate from any real reference cache on the developer's machine
+    monkeypatch.setenv("QUANTBENCH_REFCACHE", str(tmp_path))
     spec = make_spec(kind="quality", engine="mock").model_copy()
     # force the real (non-synthetic) path
     record = Worker(spec)
@@ -144,3 +146,42 @@ def test_throttled_invalid_is_not_overwritten_by_ok(monkeypatch):
     record = Worker(make_spec()).run()
     assert record.status is RunStatus.throttled_invalid
     assert any("invalidating throttle" in w for w in record.warnings)
+
+
+def test_sysmem_spill_is_recorded_as_oom(monkeypatch):
+    """Windows sysmem fallback: a run that spilled to system RAM did not fit (§5.3)."""
+    import quantbench.metrics.memory as memory
+
+    monkeypatch.setattr(memory, "spill_suspected", lambda *a, **k: True)
+    import quantbench.worker as worker_mod
+
+    monkeypatch.setattr(worker_mod, "peak_shared_mb", lambda samples: 3368.0)
+    record = Worker(make_spec()).run()
+    assert record.status is RunStatus.oom
+    assert "sysmem fallback" in (record.error or "")
+    assert record.memory.vram_shared_peak_mb == 3368.0
+
+
+def test_pinned_host_memory_is_not_spill():
+    from quantbench.metrics.memory import GpuSample, spill_suspected
+
+    def s(device, shared):
+        return GpuSample(
+            t_s=0.0,
+            device_used_mb=device,
+            process_used_mb=None,
+            power_w=None,
+            temp_c=None,
+            sm_clock_mhz=None,
+            throttle_bits=None,
+            shared_mb=shared,
+        )
+
+    total = 16303.0
+    # llama-perplexity: 1.2 GB pinned logits buffer, device far from full -> not spill
+    assert not spill_suspected([s(9800.0, 1350.0)], total)
+    # probe: shared grows once the device is within ~0.7 GiB of full -> spill
+    assert spill_suspected([s(15600.0, 268.0)], total)
+    # pressure and shared at *different* moments do not combine
+    assert not spill_suspected([s(9800.0, 1350.0), s(15600.0, 80.0)], total)
+    assert not spill_suspected([s(15600.0, 268.0)], None)

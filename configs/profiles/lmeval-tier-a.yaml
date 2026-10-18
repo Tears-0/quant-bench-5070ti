@@ -1,0 +1,52 @@
+# lm-eval downstream accuracy for Tier A (requirements.md §5.2; open question Q15 (a)).
+#
+# The BF16 reference and both GGUF quants run through the same harness — lm-eval's hf
+# backend — so retention % compares like with like. GGUF weights are loaded dequantized to
+# fp16 by Transformers: this measures the quantized *weights*, not llama.cpp's kernels, and
+# every record says so (scored_by_engine: lm-eval/hf). The reference runs first so its
+# runtime can be measured before committing GPU hours to the rest.
+name: lmeval-tier-a
+description: Downstream accuracy (ARC-Challenge, HellaSwag, GSM8K, pinned MMLU subset) for Tier A.
+seed: 1337
+order: as_listed
+hardware: 5070ti
+
+protocol:
+  warmup_iters: 0
+  measured_iters: 1
+  cooldown_target_c: 50
+  cooldown_timeout_s: 300
+  clocks_locked: false
+  timeout_s: 21600
+  sample_hz: 10.0
+
+cells:
+  # Gate: the dequantized GGUF checkpoints must reproduce llama.cpp's quality before any
+  # lm-eval hours are spent on them. Scored on the BF16 top-k reference (Transformers), this
+  # is also the Q14 cross-check of the two KL estimators on the same quantized weights.
+  - name: tierA-dequant-validation
+    models: [qwen3-4b]
+    formats: ["gguf:Q8_0", "gguf:Q4_K_M"]
+    engines: [transformers]
+    attention_backends: [sdpa]
+    workloads:
+      - kind: quality
+        eval_config: wikitext2
+
+  - name: tierA-lmeval-reference
+    models: [qwen3-4b]
+    formats: ["bf16:reference"]
+    engines: [transformers]
+    attention_backends: [sdpa]
+    workloads:
+      - kind: quality
+        eval_config: lm_eval_tasks
+
+  - name: tierA-lmeval-gguf-dequantized
+    models: [qwen3-4b]
+    formats: ["gguf:Q8_0", "gguf:Q4_K_M"]
+    engines: [transformers]
+    attention_backends: [sdpa]
+    workloads:
+      - kind: quality
+        eval_config: lm_eval_tasks

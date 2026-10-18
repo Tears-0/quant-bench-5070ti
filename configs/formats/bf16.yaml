@@ -7,7 +7,8 @@ producer_module: null
 default_engines: [transformers]
 supported_engines: [transformers, llama.cpp]
 scoring_engine: null
-artifact_pattern: null
+# the pinned local checkout (quantbench models fetch), never a fresh Hub download
+artifact_pattern: "models/{model_slug}/hf"
 
 kv_cache_dtypes: [auto]
 attention_backends: [sdpa, eager]
