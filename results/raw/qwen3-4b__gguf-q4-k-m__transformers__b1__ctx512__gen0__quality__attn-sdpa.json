@@ -1,0 +1,255 @@
+{
+  "record_version": 1,
+  "spec_hash": "sha256:1fbcfa6739506a1b826317db551becb16c8c4af352b89fb992b73cdd425e5ae4",
+  "environment_hash": "sha256:b1b030eee1ac9691d9d11b3fd8e03b8170d60ec4c02f5bee53aac03970813905",
+  "spec": {
+    "run_id": "qwen3-4b__gguf-q4-k-m__transformers__b1__ctx512__gen0__quality__attn-sdpa",
+    "spec_version": 1,
+    "model": {
+      "name": "Qwen3-4B",
+      "hf_repo": "Qwen/Qwen3-4B",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "tier": "A",
+      "params_total": 4022468096,
+      "params_non_embedding": 3633511936,
+      "tokenizer_sha256": "sha256:aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+    },
+    "quant": {
+      "format": "gguf",
+      "variant": "Q4_K_M",
+      "bits_nominal": 4.0,
+      "imatrix": false,
+      "imatrix_source": null,
+      "calibration_dataset": null,
+      "artifact_path": "models/qwen3-4b/qwen3-4b-q4_k_m.gguf",
+      "artifact_sha256": null,
+      "producer": "llama-quantize",
+      "producer_version": null,
+      "publisher": null,
+      "publisher_revision": null
+    },
+    "engine": {
+      "name": "transformers",
+      "version": null,
+      "commit": null,
+      "attention_backend": "sdpa",
+      "kv_cache_dtype": "f16",
+      "n_gpu_layers": null,
+      "flags": [],
+      "extra": {}
+    },
+    "workload": {
+      "kind": "quality",
+      "batch_size": 1,
+      "prompt_tokens": 512,
+      "generate_tokens": 0,
+      "ignore_eos": true,
+      "temperature": 0.0,
+      "seed": 1337,
+      "eval_config": "wikitext2"
+    },
+    "protocol": {
+      "warmup_iters": 0,
+      "measured_iters": 1,
+      "cooldown_target_c": 50,
+      "cooldown_timeout_s": 300,
+      "clocks_locked": false,
+      "timeout_s": 21600,
+      "sample_hz": 10.0
+    }
+  },
+  "status": "ok",
+  "synthetic": false,
+  "environment": {
+    "driver": "617.14",
+    "cuda_runtime": "12.8",
+    "torch": "2.11.0+cu128",
+    "torch_arch_list": [
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_uuid": "GPU-943140c6-55d3-370c-56e4-67efaeeab433",
+    "vram_total_mb": 16303,
+    "is_wsl": false,
+    "cpu": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "ram_gb": 31.3,
+    "os": "Windows 11",
+    "python": "3.12.13",
+    "hostname": "DESKTOP-7IMNI54",
+    "nvml_driver": "617.14",
+    "timestamp_utc": "2026-10-17T12:06:48Z"
+  },
+  "engine_metadata": {
+    "name": "transformers",
+    "version": "5.20.1",
+    "commit": null,
+    "attention_backend": "sdpa",
+    "kv_cache_dtype": null,
+    "kernels": [],
+    "binary_path": null,
+    "extra": {
+      "torch": "2.11.0+cu128",
+      "loaded_from": "models\\qwen3-4b\\qwen3-4b-q4_k_m-dequant-fp16",
+      "dtype": "torch.float16",
+      "attn_implementation": "sdpa"
+    }
+  },
+  "latency": {
+    "ttft_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "itl_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "decode_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "prefill_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "e2e_latency_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "throughput_tok_s_total": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "per_token_timestamps_ms": []
+  },
+  "memory": {
+    "vram_weights_mb": 7672.267578125,
+    "vram_kv_mb": null,
+    "vram_peak_allocated_mb": null,
+    "vram_peak_nvsmi_mb": 10329.6015625,
+    "vram_baseline_nvsmi_mb": 0.2578125,
+    "vram_peak_attributed_mb": 10329.6015625,
+    "vram_accounting": "per_process_wddm",
+    "vram_shared_peak_mb": 80.0,
+    "effective_bpw": 4.782718961185215,
+    "weight_file_bytes": 2497280864,
+    "weight_bytes_non_embedding": 2172258304,
+    "load_time_s": 5.948268899999675
+  },
+  "power": {
+    "power_avg_w": 226.53996413678067,
+    "power_peak_w": 275.533,
+    "energy_j": 27157.884326599764,
+    "tokens_per_joule": null,
+    "sm_clock_avg_mhz": 2444.2176814011677,
+    "gpu_temp_start_c": 47.0,
+    "gpu_temp_end_c": 51.0,
+    "throttle_reasons": [
+      "sw_power_cap",
+      "unknown_0x400"
+    ],
+    "throttled": false,
+    "throttled_fraction": 0.0,
+    "power_capped": true,
+    "power_capped_fraction": 0.40200166805671395,
+    "samples_n": 1199,
+    "sample_hz_effective": 10.000205454973202
+  },
+  "quality": {
+    "reference_id": "qwen3-4b-fp16@cee1a0eae5e8",
+    "eval_stream_sha": "sha256:cee1a0eae5e8af2397d9b634b4407c9942dfc192d2b810882dab3f80e5b7af9d",
+    "ppl_wikitext2": 13.245879145149772,
+    "ppl_config": {
+      "ctx": 2048,
+      "stride": 2048,
+      "tokens": 298792,
+      "add_bos": false,
+      "scoring": "every position of each non-overlapping chunk except the first"
+    },
+    "ppl_reference": 13.052169192179715,
+    "kl_div": {
+      "mean": 0.0582418450374113,
+      "p90": 0.12014967558961719,
+      "p99": 0.6034416774637248,
+      "max": 18.78667539121268,
+      "topk": 128,
+      "tail_mass_estimated": true,
+      "estimator": "topk-reference"
+    },
+    "top1_agreement": 0.9065871910894535,
+    "top5_agreement": 0.9966364561300168,
+    "lm_eval": {},
+    "lm_eval_limit": null,
+    "longctx_retrieval": {},
+    "scored_by_engine": "transformers",
+    "token_stream_verified": true,
+    "calibration_disjoint_from_eval": null
+  },
+  "warnings": [
+    "eval config asks for add_bos but this tokenizer has no BOS token; chunks are scored without one (recorded as add_bos=false)"
+  ],
+  "artifacts": {
+    "candidate_logprobs": "D:\\Projects\\quant-bench-5070ti\\reference_cache\\qwen3-4b\\cand-1fbcfa6739506a1b826317db.npz"
+  },
+  "error": null,
+  "stderr_tail": "W1017 20:06:54.423000 16272 .venv-hf\\Lib\\site-packages\\torch\\distributed\\elastic\\multiprocessing\\redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.\n\nLoading weights:   0%|          | 0/398 [00:00<?, ?it/s]\nLoading weights:   3%|▎         | 10/398 [00:00<00:03, 99.28it/s]\nLoading weights:   5%|▌         | 20/398 [00:00<00:05, 69.15it/s]\nLoading weights:   8%|▊         | 32/398 [00:00<00:04, 79.18it/s]\nLoading weights:  10%|█         | 41/398 [00:00<00:04, 74.79it/s]\nLoading weights:  13%|█▎        | 53/398 [00:00<00:04, 83.08it/s]\nLoading weights:  16%|█▌        | 64/398 [00:00<00:04, 82.60it/s]\nLoading weights:  19%|█▉        | 75/398 [00:00<00:03, 88.06it/s]\nLoading weights:  22%|██▏       | 88/398 [00:01<00:03, 93.55it/s]\nLoading weights:  25%|██▍       | 98/398 [00:01<00:03, 94.52it/s]\nLoading weights:  27%|██▋       | 108/398 [00:01<00:03, 88.71it/s]\nLoading weights:  31%|███       | 122/398 [00:01<00:03, 91.50it/s]\nLoading weights:  33%|███▎      | 132/398 [00:01<00:02, 91.73it/s]\nLoading weights:  36%|███▌      | 142/398 [00:01<00:02, 86.54it/s]\nLoading weights:  38%|███▊      | 151/398 [00:01<00:02, 82.63it/s]\nLoading weights:  41%|████      | 163/398 [00:01<00:02, 84.02it/s]\nLoading weights:  44%|████▎     | 174/398 [00:02<00:02, 85.40it/s]\nLoading weights:  47%|████▋     | 188/398 [00:02<00:02, 93.57it/s]\nLoading weights:  50%|█████     | 199/398 [00:02<00:02, 90.17it/s]\nLoading weights:  53%|█████▎    | 209/398 [00:02<00:02, 84.76it/s]\nLoading weights:  55%|█████▌    | 219/398 [00:02<00:02, 86.57it/s]\nLoading weights:  57%|█████▋    | 228/398 [00:02<00:02, 78.76it/s]\nLoading weights:  59%|█████▉    | 236/398 [00:02<00:02, 63.49it/s]\nLoading weights:  63%|██████▎   | 250/398 [00:02<00:01, 79.17it/s]\nLoading weights:  65%|██████▌   | 259/398 [00:03<00:01, 80.24it/s]\nLoading weights:  67%|██████▋   | 268/398 [00:03<00:01, 81.66it/s]\nLoading weights:  70%|██████▉   | 277/398 [00:03<00:01, 79.10it/s]\nLoading weights:  72%|███████▏  | 286/398 [00:03<00:01, 71.55it/s]\nLoading weights:  74%|███████▍  | 295/398 [00:03<00:01, 68.52it/s]\nLoading weights:  76%|███████▌  | 303/398 [00:03<00:01, 60.88it/s]\nLoading weights:  80%|███████▉  | 317/398 [00:03<00:01, 74.44it/s]\nLoading weights:  82%|████████▏ | 328/398 [00:04<00:00, 80.11it/s]\nLoading weights:  85%|████████▍ | 337/398 [00:04<00:00, 80.00it/s]\nLoading weights:  87%|████████▋ | 346/398 [00:04<00:00, 81.01it/s]\nLoading weights:  89%|████████▉ | 355/398 [00:04<00:00, 76.48it/s]\nLoading weights:  91%|█████████ | 363/398 [00:04<00:00, 71.68it/s]\nLoading weights:  93%|█████████▎| 371/398 [00:04<00:00, 65.04it/s]\nLoading weights:  96%|█████████▌| 381/398 [00:04<00:00, 68.83it/s]\nLoading weights: 100%|██████████| 398/398 [00:04<00:00, 81.74it/s]\n",
+  "duration_s": 132.5073848000029
+}

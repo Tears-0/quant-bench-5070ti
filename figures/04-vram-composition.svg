@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="568.38pt" height="423.543909pt" viewBox="0 0 568.38 423.543909" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="575.5425pt" height="413.941721pt" viewBox="0 0 575.5425 413.941721" xmlns="http://www.w3.org/2000/svg" version="1.1">
  <metadata>
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
@@ -20,9 +20,9 @@
  </defs>
  <g id="figure_1">
   <g id="patch_1">
-   <path d="M 0 423.543909 
-L 568.38 423.543909 
-L 568.38 0 
+   <path d="M 0 413.941721 
+L 575.5425 413.941721 
+L 575.5425 0 
 L 0 0 
 z
 " style="fill: #ffffff"/>
@@ -41,7 +41,7 @@ z
      <g id="line2d_1">
       <path d="M 189.672727 299.518125 
 L 189.672727 22.318125 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_2">
       <defs>
@@ -62,7 +62,7 @@ L 0 3.5
      <g id="line2d_3">
       <path d="M 415.127273 299.518125 
 L 415.127273 22.318125 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_4">
       <g>
@@ -80,7 +80,7 @@ L 415.127273 22.318125
      <g id="line2d_5">
       <path d="M 79.2 299.518125 
 L 525.6 299.518125 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_6">
       <defs>
@@ -100,7 +100,7 @@ L -3.5 0
      <g id="line2d_7">
       <path d="M 79.2 267.131448 
 L 525.6 267.131448 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_8">
       <g>
@@ -115,7 +115,7 @@ L 525.6 267.131448
      <g id="line2d_9">
       <path d="M 79.2 234.74477 
 L 525.6 234.74477 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_10">
       <g>
@@ -130,7 +130,7 @@ L 525.6 234.74477
      <g id="line2d_11">
       <path d="M 79.2 202.358093 
 L 525.6 202.358093 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_12">
       <g>
@@ -145,7 +145,7 @@ L 525.6 202.358093
      <g id="line2d_13">
       <path d="M 79.2 169.971416 
 L 525.6 169.971416 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_14">
       <g>
@@ -160,7 +160,7 @@ L 525.6 169.971416
      <g id="line2d_15">
       <path d="M 79.2 137.584739 
 L 525.6 137.584739 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_16">
       <g>
@@ -175,7 +175,7 @@ L 525.6 137.584739
      <g id="line2d_17">
       <path d="M 79.2 105.198061 
 L 525.6 105.198061 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_18">
       <g>
@@ -190,7 +190,7 @@ L 525.6 105.198061
      <g id="line2d_19">
       <path d="M 79.2 72.811384 
 L 525.6 72.811384 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_20">
       <g>
@@ -205,7 +205,7 @@ L 525.6 72.811384
      <g id="line2d_21">
       <path d="M 79.2 40.424707 
 L 525.6 40.424707 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.25; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_22">
       <g>
@@ -226,7 +226,7 @@ L 279.854545 299.518125
 L 279.854545 261.04421 
 L 99.490909 261.04421 
 z
-" clip-path="url(#pb91ba45424)" style="fill: #0072b2"/>
+" clip-path="url(#p33607b2fed)" style="fill: #0072b2"/>
    </g>
    <g id="patch_4">
     <path d="M 324.945455 299.518125 
@@ -234,7 +234,7 @@ L 505.309091 299.518125
 L 505.309091 233.507114 
 L 324.945455 233.507114 
 z
-" clip-path="url(#pb91ba45424)" style="fill: #0072b2"/>
+" clip-path="url(#p33607b2fed)" style="fill: #0072b2"/>
    </g>
    <g id="patch_5">
     <path d="M 99.490909 261.04421 
@@ -242,7 +242,7 @@ L 279.854545 261.04421
 L 279.854545 259.295329 
 L 99.490909 259.295329 
 z
-" clip-path="url(#pb91ba45424)" style="fill: #e69f00"/>
+" clip-path="url(#p33607b2fed)" style="fill: #e69f00"/>
    </g>
    <g id="patch_6">
     <path d="M 324.945455 233.507114 
@@ -250,33 +250,28 @@ L 505.309091 233.507114
 L 505.309091 231.758233 
 L 324.945455 231.758233 
 z
-" clip-path="url(#pb91ba45424)" style="fill: #e69f00"/>
+" clip-path="url(#p33607b2fed)" style="fill: #e69f00"/>
    </g>
    <g id="patch_7">
     <path d="M 99.490909 259.295329 
 L 279.854545 259.295329 
-L 279.854545 254.000991 
-L 99.490909 254.000991 
+L 279.854545 254.313029 
+L 99.490909 254.313029 
 z
-" clip-path="url(#pb91ba45424)" style="fill: #009e73"/>
+" clip-path="url(#p33607b2fed)" style="fill: #009e73"/>
    </g>
    <g id="patch_8">
     <path d="M 324.945455 231.758233 
 L 505.309091 231.758233 
-L 505.309091 226.335684 
-L 324.945455 226.335684 
+L 505.309091 226.751713 
+L 324.945455 226.751713 
 z
-" clip-path="url(#pb91ba45424)" style="fill: #009e73"/>
+" clip-path="url(#p33607b2fed)" style="fill: #009e73"/>
    </g>
    <g id="line2d_23">
     <path d="M 79.2 35.518125 
 L 525.6 35.518125 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke-dasharray: 3.7,1.6; stroke-dashoffset: 0; stroke: #cc0000"/>
-   </g>
-   <g id="line2d_24">
-    <path d="M 79.2 112.896286 
-L 525.6 112.896286 
-" clip-path="url(#pb91ba45424)" style="fill: none; stroke-dasharray: 0.8,1.32; stroke-dashoffset: 0; stroke: #cc0000; stroke-width: 0.8"/>
+" clip-path="url(#p33607b2fed)" style="fill: none; stroke-dasharray: 3.7,1.6; stroke-dashoffset: 0; stroke: #cc0000"/>
    </g>
    <g id="patch_9">
     <path d="M 79.2 299.518125 
@@ -292,9 +287,6 @@ L 525.6 299.518125
     <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #cc0000" x="189.672727" y="33.59625" transform="rotate(-0 189.672727 33.59625)">  15.9 GiB card total</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start; fill: #cc0000" x="189.672727" y="110.974411" transform="rotate(-0 189.672727 110.974411)">  11.3 GiB available on this host (median baseline 4.7 GiB in use by other processes)</text>
-   </g>
-   <g id="text_15">
     <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: middle" x="302.4" y="16.318125" transform="rotate(-0 302.4 16.318125)">Where the 16 GB goes</text>
    </g>
    <g id="legend_1">
@@ -306,7 +298,7 @@ L 375.548438 141.515391
 z
 " style="fill: #0072b2"/>
     </g>
-    <g id="text_16">
+    <g id="text_15">
      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start" x="403.548438" y="148.515391" transform="rotate(-0 403.548438 148.515391)">weights</text>
     </g>
     <g id="patch_12">
@@ -317,7 +309,7 @@ L 375.548438 156.516172
 z
 " style="fill: #e69f00"/>
     </g>
-    <g id="text_17">
+    <g id="text_16">
      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start" x="403.548438" y="163.516172" transform="rotate(-0 403.548438 163.516172)">KV cache</text>
     </g>
     <g id="patch_13">
@@ -328,19 +320,18 @@ L 375.548438 171.516953
 z
 " style="fill: #009e73"/>
     </g>
-    <g id="text_18">
+    <g id="text_17">
      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start" x="403.548438" y="178.516953" transform="rotate(-0 403.548438 178.516953)">activations + allocator</text>
     </g>
    </g>
   </g>
-  <g id="text_19">
-   <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #444444" transform="translate(7.2 394.381878)">N = 2 measured configurations plus 0 recorded OOMs (hatched). Peak is device-wide NVML minus the pre-load baseline: this driver model</text>
-   <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #444444" transform="translate(7.2 404.019065)">(Windows WDDM) offers no per-process accounting, so other processes' VRAM is subtracted, not attributed. NVIDIA GeForce RTX 5070 Ti |</text>
-   <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #444444" transform="translate(7.2 413.621253)">driver 617.14.</text>
+  <g id="text_18">
+   <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #444444" transform="translate(7.2 394.381878)">N = 2 measured configurations plus 0 recorded OOMs (hatched). Peak is per-process GPU memory (Windows GPU Process Memory counters</text>
+   <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; fill: #444444" transform="translate(7.2 404.019065)">where NVML has none under WDDM), which exceeds the allocator figure. NVIDIA GeForce RTX 5070 Ti | driver 617.14.</text>
   </g>
  </g>
  <defs>
-  <clipPath id="pb91ba45424">
+  <clipPath id="p33607b2fed">
    <rect x="79.2" y="22.318125" width="446.4" height="277.2"/>
   </clipPath>
  </defs>

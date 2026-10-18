@@ -1,0 +1,248 @@
+{
+  "record_version": 1,
+  "spec_hash": "sha256:20036a910c9efe3e310f0d05e7213b13ab5754e0a145416e14c5c77962eacd59",
+  "environment_hash": "sha256:0c2ba869992b71f7147332e458af295e8df1714f61cbc6e95527d6773956daff",
+  "spec": {
+    "run_id": "qwen3-4b__gguf-q4-k-m__llama-cpp__b1__ctx512__gen0__quality__attn-cuda-fa",
+    "spec_version": 1,
+    "model": {
+      "name": "Qwen3-4B",
+      "hf_repo": "Qwen/Qwen3-4B",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "tier": "A",
+      "params_total": 4022468096,
+      "params_non_embedding": 3633511936,
+      "tokenizer_sha256": "sha256:aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+    },
+    "quant": {
+      "format": "gguf",
+      "variant": "Q4_K_M",
+      "bits_nominal": 4.0,
+      "imatrix": false,
+      "imatrix_source": null,
+      "calibration_dataset": null,
+      "artifact_path": "models/qwen3-4b/qwen3-4b-q4_k_m.gguf",
+      "artifact_sha256": null,
+      "producer": "llama-quantize",
+      "producer_version": null,
+      "publisher": null,
+      "publisher_revision": null
+    },
+    "engine": {
+      "name": "llama.cpp",
+      "version": null,
+      "commit": null,
+      "attention_backend": "cuda-fa",
+      "kv_cache_dtype": "f16",
+      "n_gpu_layers": -1,
+      "flags": [],
+      "extra": {}
+    },
+    "workload": {
+      "kind": "quality",
+      "batch_size": 1,
+      "prompt_tokens": 512,
+      "generate_tokens": 0,
+      "ignore_eos": true,
+      "temperature": 0.0,
+      "seed": 1337,
+      "eval_config": "wikitext2"
+    },
+    "protocol": {
+      "warmup_iters": 1,
+      "measured_iters": 3,
+      "cooldown_target_c": 50,
+      "cooldown_timeout_s": 120,
+      "clocks_locked": false,
+      "timeout_s": 900,
+      "sample_hz": 10.0
+    }
+  },
+  "status": "oom",
+  "synthetic": false,
+  "environment": {
+    "driver": "617.14",
+    "cuda_runtime": null,
+    "torch": null,
+    "torch_arch_list": [],
+    "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_uuid": "GPU-943140c6-55d3-370c-56e4-67efaeeab433",
+    "vram_total_mb": 16303,
+    "is_wsl": false,
+    "cpu": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "ram_gb": 31.3,
+    "os": "Windows 11",
+    "python": "3.12.13",
+    "hostname": "DESKTOP-7IMNI54",
+    "nvml_driver": "617.14",
+    "timestamp_utc": "2026-10-17T06:54:02Z"
+  },
+  "engine_metadata": {
+    "name": "llama.cpp",
+    "version": "b11706",
+    "commit": "f74e2fa6a",
+    "attention_backend": "cuda-fa",
+    "kv_cache_dtype": null,
+    "kernels": [],
+    "binary_path": "D:\\Projects\\quant-bench-5070ti\\tools\\llama.cpp\\b11706\\bin\\llama-server.exe",
+    "extra": {
+      "server_bin": "D:\\Projects\\quant-bench-5070ti\\tools\\llama.cpp\\b11706\\bin\\llama-server.exe"
+    }
+  },
+  "latency": {
+    "ttft_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "itl_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "decode_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "prefill_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "e2e_latency_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "throughput_tok_s_total": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "per_token_timestamps_ms": []
+  },
+  "memory": {
+    "vram_weights_mb": null,
+    "vram_kv_mb": null,
+    "vram_peak_allocated_mb": null,
+    "vram_peak_nvsmi_mb": 3214.75390625,
+    "vram_baseline_nvsmi_mb": 0.0,
+    "vram_peak_attributed_mb": 3214.75390625,
+    "vram_accounting": "per_process_wddm",
+    "vram_shared_peak_mb": 694.0,
+    "effective_bpw": 4.782718961185215,
+    "weight_file_bytes": 2497280864,
+    "weight_bytes_non_embedding": 2172258304,
+    "load_time_s": 0.0
+  },
+  "power": {
+    "power_avg_w": 124.2973801369863,
+    "power_peak_w": 166.485,
+    "energy_j": 3621.1566796183565,
+    "tokens_per_joule": null,
+    "sm_clock_avg_mhz": 2852.667808219178,
+    "gpu_temp_start_c": 42.0,
+    "gpu_temp_end_c": 46.0,
+    "throttle_reasons": [
+      "sw_power_cap",
+      "unknown_0x400"
+    ],
+    "throttled": false,
+    "throttled_fraction": 0.0,
+    "power_capped": true,
+    "power_capped_fraction": 0.25,
+    "samples_n": 292,
+    "sample_hz_effective": 9.999699527929252
+  },
+  "quality": {
+    "reference_id": "qwen3-4b-f16gguf@2b88161ef6c3",
+    "eval_stream_sha": "sha256:9004c151b86a63d05454e3922f9eee72ffdb8e0c328716c50cbe2d074fc7b2f7",
+    "ppl_wikitext2": 10.735282,
+    "ppl_config": {
+      "ctx": 2048,
+      "stride": 2048,
+      "tokens": 40920,
+      "add_bos": false,
+      "scoring": "llama-perplexity: positions 1024..2046 of each of 40 chunks"
+    },
+    "ppl_reference": 10.6672,
+    "kl_div": {
+      "mean": 0.050891,
+      "p90": 0.111724,
+      "p99": 0.526934,
+      "max": 19.221445,
+      "topk": null,
+      "tail_mass_estimated": false,
+      "estimator": "llama-perplexity"
+    },
+    "top1_agreement": 0.9096,
+    "top5_agreement": null,
+    "lm_eval": {},
+    "lm_eval_limit": null,
+    "longctx_retrieval": {},
+    "scored_by_engine": "llama.cpp",
+    "token_stream_verified": true,
+    "calibration_disjoint_from_eval": null
+  },
+  "warnings": [
+    "KL is llama-perplexity's full-vocabulary estimator against the F16 GGUF (within llama.cpp); compare it with top-k-reference KL from other engines only across that labelled boundary (§6.1)",
+    "sysmem fallback: 694 MiB of this run's GPU memory spilled to system RAM (Windows 'CUDA - Sysmem Fallback Policy'). It did not fit in VRAM; on a driver without fallback this is an OOM, and any timings taken while spilled are invalid."
+  ],
+  "artifacts": {
+    "ppl_base_native_floored": "10.600035",
+    "kl_mean_stderr": "0.000934",
+    "top1_agreement_stderr": "0.0014199999999999998"
+  },
+  "error": "sysmem fallback: 694 MiB of this run's GPU memory spilled to system RAM (Windows 'CUDA - Sysmem Fallback Policy'). It did not fit in VRAM; on a driver without fallback this is an OOM, and any timings taken while spilled are invalid.",
+  "stderr_tail": null,
+  "duration_s": 29.508231600004365
+}

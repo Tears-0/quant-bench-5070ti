@@ -1,0 +1,255 @@
+{
+  "record_version": 1,
+  "spec_hash": "sha256:33a3559571440104fa19c2253474dd213e230d4bdc0b3279af625344fd2b71ba",
+  "environment_hash": "sha256:b1b030eee1ac9691d9d11b3fd8e03b8170d60ec4c02f5bee53aac03970813905",
+  "spec": {
+    "run_id": "qwen3-4b__gguf-q8-0__transformers__b1__ctx512__gen0__quality__attn-sdpa",
+    "spec_version": 1,
+    "model": {
+      "name": "Qwen3-4B",
+      "hf_repo": "Qwen/Qwen3-4B",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "tier": "A",
+      "params_total": 4022468096,
+      "params_non_embedding": 3633511936,
+      "tokenizer_sha256": "sha256:aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+    },
+    "quant": {
+      "format": "gguf",
+      "variant": "Q8_0",
+      "bits_nominal": 8.0,
+      "imatrix": false,
+      "imatrix_source": null,
+      "calibration_dataset": null,
+      "artifact_path": "models/qwen3-4b/qwen3-4b-q8_0.gguf",
+      "artifact_sha256": null,
+      "producer": "llama-quantize",
+      "producer_version": null,
+      "publisher": null,
+      "publisher_revision": null
+    },
+    "engine": {
+      "name": "transformers",
+      "version": null,
+      "commit": null,
+      "attention_backend": "sdpa",
+      "kv_cache_dtype": "f16",
+      "n_gpu_layers": null,
+      "flags": [],
+      "extra": {}
+    },
+    "workload": {
+      "kind": "quality",
+      "batch_size": 1,
+      "prompt_tokens": 512,
+      "generate_tokens": 0,
+      "ignore_eos": true,
+      "temperature": 0.0,
+      "seed": 1337,
+      "eval_config": "wikitext2"
+    },
+    "protocol": {
+      "warmup_iters": 0,
+      "measured_iters": 1,
+      "cooldown_target_c": 50,
+      "cooldown_timeout_s": 300,
+      "clocks_locked": false,
+      "timeout_s": 21600,
+      "sample_hz": 10.0
+    }
+  },
+  "status": "ok",
+  "synthetic": false,
+  "environment": {
+    "driver": "617.14",
+    "cuda_runtime": "12.8",
+    "torch": "2.11.0+cu128",
+    "torch_arch_list": [
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_uuid": "GPU-943140c6-55d3-370c-56e4-67efaeeab433",
+    "vram_total_mb": 16303,
+    "is_wsl": false,
+    "cpu": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "ram_gb": 31.3,
+    "os": "Windows 11",
+    "python": "3.12.13",
+    "hostname": "DESKTOP-7IMNI54",
+    "nvml_driver": "617.14",
+    "timestamp_utc": "2026-10-17T12:04:26Z"
+  },
+  "engine_metadata": {
+    "name": "transformers",
+    "version": "5.20.1",
+    "commit": null,
+    "attention_backend": "sdpa",
+    "kv_cache_dtype": null,
+    "kernels": [],
+    "binary_path": null,
+    "extra": {
+      "torch": "2.11.0+cu128",
+      "loaded_from": "models\\qwen3-4b\\qwen3-4b-q8_0-dequant-fp16",
+      "dtype": "torch.float16",
+      "attn_implementation": "sdpa"
+    }
+  },
+  "latency": {
+    "ttft_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "itl_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "decode_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "prefill_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "e2e_latency_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "throughput_tok_s_total": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "per_token_timestamps_ms": []
+  },
+  "memory": {
+    "vram_weights_mb": 7672.267578125,
+    "vram_kv_mb": null,
+    "vram_peak_allocated_mb": null,
+    "vram_peak_nvsmi_mb": 10329.6015625,
+    "vram_baseline_nvsmi_mb": 0.2578125,
+    "vram_peak_attributed_mb": 10329.6015625,
+    "vram_accounting": "per_process_wddm",
+    "vram_shared_peak_mb": 80.0,
+    "effective_bpw": 8.501268264995732,
+    "weight_file_bytes": 4280405344,
+    "weight_bytes_non_embedding": 3861182464,
+    "load_time_s": 5.916529599999194
+  },
+  "power": {
+    "power_avg_w": 223.91952026468155,
+    "power_peak_w": 274.544,
+    "energy_j": 27068.337440766747,
+    "tokens_per_joule": null,
+    "sm_clock_avg_mhz": 2427.8453267162945,
+    "gpu_temp_start_c": 45.0,
+    "gpu_temp_end_c": 50.0,
+    "throttle_reasons": [
+      "sw_power_cap",
+      "unknown_0x400"
+    ],
+    "throttled": false,
+    "throttled_fraction": 0.0,
+    "power_capped": true,
+    "power_capped_fraction": 0.2853598014888337,
+    "samples_n": 1209,
+    "sample_hz_effective": 9.998950606822733
+  },
+  "quality": {
+    "reference_id": "qwen3-4b-fp16@cee1a0eae5e8",
+    "eval_stream_sha": "sha256:cee1a0eae5e8af2397d9b634b4407c9942dfc192d2b810882dab3f80e5b7af9d",
+    "ppl_wikitext2": 13.074906963303123,
+    "ppl_config": {
+      "ctx": 2048,
+      "stride": 2048,
+      "tokens": 298792,
+      "add_bos": false,
+      "scoring": "every position of each non-overlapping chunk except the first"
+    },
+    "ppl_reference": 13.052169192179715,
+    "kl_div": {
+      "mean": 0.0011467826112331015,
+      "p90": 0.00259938661793826,
+      "p99": 0.01051611377484545,
+      "max": 1.8567825249271848,
+      "topk": 128,
+      "tail_mass_estimated": true,
+      "estimator": "topk-reference"
+    },
+    "top1_agreement": 0.9824024739618196,
+    "top5_agreement": 0.999973225521433,
+    "lm_eval": {},
+    "lm_eval_limit": null,
+    "longctx_retrieval": {},
+    "scored_by_engine": "transformers",
+    "token_stream_verified": true,
+    "calibration_disjoint_from_eval": null
+  },
+  "warnings": [
+    "eval config asks for add_bos but this tokenizer has no BOS token; chunks are scored without one (recorded as add_bos=false)"
+  ],
+  "artifacts": {
+    "candidate_logprobs": "D:\\Projects\\quant-bench-5070ti\\reference_cache\\qwen3-4b\\cand-33a3559571440104fa19c225.npz"
+  },
+  "error": null,
+  "stderr_tail": " 13%|█▎        | 51/398 [00:00<00:04, 80.34it/s]\nLoading weights:  16%|█▌        | 64/398 [00:00<00:04, 78.57it/s]\nLoading weights:  19%|█▉        | 76/398 [00:01<00:03, 84.47it/s]\nLoading weights:  22%|██▏       | 88/398 [00:01<00:03, 79.07it/s]\nLoading weights:  26%|██▌       | 103/398 [00:01<00:03, 95.07it/s]\nLoading weights:  29%|██▊       | 114/398 [00:01<00:03, 86.34it/s]\nLoading weights:  31%|███▏      | 125/398 [00:01<00:03, 90.73it/s]\nLoading weights:  34%|███▍      | 135/398 [00:01<00:03, 86.77it/s]\nLoading weights:  36%|███▋      | 145/398 [00:01<00:03, 84.02it/s]\nLoading weights:  39%|███▊      | 154/398 [00:01<00:03, 80.62it/s]\nLoading weights:  41%|████      | 164/398 [00:02<00:02, 78.42it/s]\nLoading weights:  44%|████▎     | 174/398 [00:02<00:02, 79.63it/s]\nLoading weights:  46%|████▋     | 185/398 [00:02<00:02, 80.38it/s]\nLoading weights:  49%|████▉     | 197/398 [00:02<00:02, 83.96it/s]\nLoading weights:  52%|█████▏    | 206/398 [00:02<00:02, 79.39it/s]\nLoading weights:  55%|█████▌    | 220/398 [00:02<00:02, 85.07it/s]\nLoading weights:  58%|█████▊    | 229/398 [00:02<00:02, 80.61it/s]\nLoading weights:  60%|██████    | 240/398 [00:02<00:01, 87.13it/s]\nLoading weights:  63%|██████▎   | 249/398 [00:03<00:02, 69.09it/s]\nLoading weights:  67%|██████▋   | 266/398 [00:03<00:01, 84.70it/s]\nLoading weights:  70%|███████   | 279/398 [00:03<00:01, 87.60it/s]\nLoading weights:  73%|███████▎  | 289/398 [00:03<00:01, 90.04it/s]\nLoading weights:  75%|███████▌  | 299/398 [00:03<00:01, 85.97it/s]\nLoading weights:  77%|███████▋  | 308/398 [00:03<00:01, 80.03it/s]\nLoading weights:  80%|████████  | 319/398 [00:03<00:00, 80.97it/s]\nLoading weights:  82%|████████▏ | 328/398 [00:04<00:00, 77.02it/s]\nLoading weights:  86%|████████▌ | 341/398 [00:04<00:00, 82.83it/s]\nLoading weights:  88%|████████▊ | 350/398 [00:04<00:00, 75.13it/s]\nLoading weights:  91%|█████████ | 361/398 [00:04<00:00, 80.25it/s]\nLoading weights:  93%|█████████▎| 371/398 [00:04<00:00, 69.73it/s]\nLoading weights:  96%|█████████▌| 381/398 [00:04<00:00, 67.66it/s]\nLoading weights: 100%|██████████| 398/398 [00:04<00:00, 81.73it/s]\nD:\\Projects\\quant-bench-5070ti\\.venv-hf\\Lib\\site-packages\\huggingface_hub\\file_download.py:149: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\\Users\\X\\.cache\\huggingface\\hub\\models--Qwen--Qwen3-4B. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.\nTo support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development\n  warnings.warn(message)\nWarning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\nD:\\Projects\\quant-bench-5070ti\\.venv-hf\\Lib\\site-packages\\huggingface_hub\\file_download.py:149: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\\Users\\X\\.cache\\huggingface\\hub. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.\nTo support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development\n  warnings.warn(message)\n",
+  "duration_s": 138.6548255999951
+}

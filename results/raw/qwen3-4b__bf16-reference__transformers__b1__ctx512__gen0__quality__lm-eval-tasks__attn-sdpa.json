@@ -1,0 +1,270 @@
+{
+  "record_version": 1,
+  "spec_hash": "sha256:54d0403d90b082f263f6a094bed98270e0cf874a6d80eb2afcfd13060a3b05a3",
+  "environment_hash": "sha256:b1b030eee1ac9691d9d11b3fd8e03b8170d60ec4c02f5bee53aac03970813905",
+  "spec": {
+    "run_id": "qwen3-4b__bf16-reference__transformers__b1__ctx512__gen0__quality__lm-eval-tasks__attn-sdpa",
+    "spec_version": 1,
+    "model": {
+      "name": "Qwen3-4B",
+      "hf_repo": "Qwen/Qwen3-4B",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "tier": "A",
+      "params_total": 4022468096,
+      "params_non_embedding": 3633511936,
+      "tokenizer_sha256": "sha256:aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+    },
+    "quant": {
+      "format": "bf16",
+      "variant": "reference",
+      "bits_nominal": 16.0,
+      "imatrix": false,
+      "imatrix_source": null,
+      "calibration_dataset": null,
+      "artifact_path": "models/qwen3-4b/hf",
+      "artifact_sha256": null,
+      "producer": null,
+      "producer_version": null,
+      "publisher": null,
+      "publisher_revision": null
+    },
+    "engine": {
+      "name": "transformers",
+      "version": null,
+      "commit": null,
+      "attention_backend": "sdpa",
+      "kv_cache_dtype": "auto",
+      "n_gpu_layers": null,
+      "flags": [],
+      "extra": {}
+    },
+    "workload": {
+      "kind": "quality",
+      "batch_size": 1,
+      "prompt_tokens": 512,
+      "generate_tokens": 0,
+      "ignore_eos": true,
+      "temperature": 0.0,
+      "seed": 1337,
+      "eval_config": "lm_eval_tasks"
+    },
+    "protocol": {
+      "warmup_iters": 0,
+      "measured_iters": 1,
+      "cooldown_target_c": 50,
+      "cooldown_timeout_s": 300,
+      "clocks_locked": false,
+      "timeout_s": 21600,
+      "sample_hz": 10.0
+    }
+  },
+  "status": "ok",
+  "synthetic": false,
+  "environment": {
+    "driver": "617.14",
+    "cuda_runtime": "12.8",
+    "torch": "2.11.0+cu128",
+    "torch_arch_list": [
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "gpu_name": "NVIDIA GeForce RTX 5070 Ti",
+    "gpu_uuid": "GPU-943140c6-55d3-370c-56e4-67efaeeab433",
+    "vram_total_mb": 16303,
+    "is_wsl": false,
+    "cpu": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "ram_gb": 31.3,
+    "os": "Windows 11",
+    "python": "3.12.13",
+    "hostname": "DESKTOP-7IMNI54",
+    "nvml_driver": "617.14",
+    "timestamp_utc": "2026-10-17T12:36:10Z"
+  },
+  "engine_metadata": {
+    "name": "transformers",
+    "version": "5.20.1",
+    "commit": null,
+    "attention_backend": null,
+    "kv_cache_dtype": null,
+    "kernels": [],
+    "binary_path": null,
+    "extra": {
+      "torch": "2.11.0+cu128",
+      "lm_eval_commands": [
+        "D:\\Projects\\quant-bench-5070ti\\.venv-hf\\Scripts\\python.exe -m quantbench.lmeval_job --job D:\\Projects\\quant-bench-5070ti\\results\\lm_eval\\qwen3-4b__bf16-reference__transformers__b1__ctx512__gen0__quality__lm-eval-tasks__attn-sdpa\\job.json"
+      ]
+    }
+  },
+  "latency": {
+    "ttft_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "itl_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "decode_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "prefill_tok_s": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "e2e_latency_ms": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "throughput_tok_s_total": {
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "mean": null,
+      "std": null,
+      "iqr": null,
+      "min": null,
+      "max": null,
+      "n": 0,
+      "samples": []
+    },
+    "per_token_timestamps_ms": []
+  },
+  "memory": {
+    "vram_weights_mb": 0.0,
+    "vram_kv_mb": null,
+    "vram_peak_allocated_mb": null,
+    "vram_peak_nvsmi_mb": 11825.875,
+    "vram_baseline_nvsmi_mb": 0.2578125,
+    "vram_peak_attributed_mb": 11825.875,
+    "vram_accounting": "per_process_wddm",
+    "vram_shared_peak_mb": 82.0,
+    "effective_bpw": 16.0,
+    "weight_file_bytes": null,
+    "weight_bytes_non_embedding": 7267023872,
+    "load_time_s": 0.0
+  },
+  "power": {
+    "power_avg_w": 183.8901847770868,
+    "power_peak_w": 287.596,
+    "energy_j": 1049733.138997158,
+    "tokens_per_joule": null,
+    "sm_clock_avg_mhz": 2854.002224752562,
+    "gpu_temp_start_c": 41.0,
+    "gpu_temp_end_c": 53.0,
+    "throttle_reasons": [
+      "sw_power_cap",
+      "unknown_0x400"
+    ],
+    "throttled": false,
+    "throttled_fraction": 0.0,
+    "power_capped": true,
+    "power_capped_fraction": 0.101007269860734,
+    "samples_n": 57085,
+    "sample_hz_effective": 9.999992920262896
+  },
+  "quality": {
+    "reference_id": null,
+    "eval_stream_sha": null,
+    "ppl_wikitext2": null,
+    "ppl_config": null,
+    "ppl_reference": null,
+    "kl_div": {
+      "mean": null,
+      "p90": null,
+      "p99": null,
+      "max": null,
+      "topk": null,
+      "tail_mass_estimated": false,
+      "estimator": null
+    },
+    "top1_agreement": null,
+    "top5_agreement": null,
+    "lm_eval": {
+      "arc_challenge": 0.5392491467576792,
+      "arc_challenge_stderr": 0.014566303676636534,
+      "gsm8k": 0.8620166793025019,
+      "gsm8k_stderr": 0.009499777327746855,
+      "hellaswag": 0.6840270862378013,
+      "hellaswag_stderr": 0.004639520453444191,
+      "mmlu_abstract_algebra": 0.59,
+      "mmlu_abstract_algebra_stderr": 0.04943110704237104,
+      "mmlu_college_computer_science": 0.68,
+      "mmlu_college_computer_science_stderr": 0.046882617226215076,
+      "mmlu_high_school_mathematics": 0.4888888888888889,
+      "mmlu_high_school_mathematics_stderr": 0.030478009819615792,
+      "mmlu_professional_law": 0.4784876140808344,
+      "mmlu_professional_law_stderr": 0.012758410941038882,
+      "mmlu_world_religions": 0.8011695906432749,
+      "mmlu_world_religions_stderr": 0.030611116557432514,
+      "mmlu_subset": 0.6077092187225996
+    },
+    "lm_eval_limit": null,
+    "longctx_retrieval": {},
+    "scored_by_engine": "lm-eval/hf",
+    "token_stream_verified": null,
+    "calibration_disjoint_from_eval": null
+  },
+  "warnings": [],
+  "artifacts": {
+    "lm_eval_output": "D:\\Projects\\quant-bench-5070ti\\results\\lm_eval\\qwen3-4b__bf16-reference__transformers__b1__ctx512__gen0__quality__lm-eval-tasks__attn-sdpa",
+    "lm_eval_version": "0.4.13",
+    "lm_eval_dtype": "float16",
+    "lm_eval_batch_sizes": "{\"arc_challenge\": 8, \"hellaswag\": 8, \"gsm8k\": 2, \"mmlu_abstract_algebra\": 2, \"mmlu_college_computer_science\": 1, \"mmlu_high_school_mathematics\": 2, \"mmlu_professional_law\": 1, \"mmlu_world_religions\": 4}",
+    "lm_eval_task_seconds": "{\"gsm8k\": 4828.4, \"mmlu_abstract_algebra\": 14.1, \"mmlu_college_computer_science\": 25.3, \"mmlu_high_school_mathematics\": 35.5, \"mmlu_professional_law\": 768.7, \"mmlu_world_religions\": 14.2}",
+    "lm_eval_resumed_tasks": "arc_challenge,hellaswag"
+  },
+  "error": null,
+  "stderr_tail": null,
+  "duration_s": 5709.855434600002
+}

@@ -1,0 +1,48 @@
+{
+  "model_args": "pretrained=models\\qwen3-4b\\qwen3-4b-q4_k_m-dequant-fp16,dtype=float16,attn_implementation=sdpa",
+  "tasks": [
+    {
+      "task": "arc_challenge",
+      "num_fewshot": 0,
+      "batch_size": 8
+    },
+    {
+      "task": "hellaswag",
+      "num_fewshot": 0,
+      "batch_size": 8
+    },
+    {
+      "task": "gsm8k",
+      "num_fewshot": 8,
+      "batch_size": 2
+    },
+    {
+      "task": "mmlu_abstract_algebra",
+      "num_fewshot": 5,
+      "batch_size": 2
+    },
+    {
+      "task": "mmlu_college_computer_science",
+      "num_fewshot": 5,
+      "batch_size": 1
+    },
+    {
+      "task": "mmlu_high_school_mathematics",
+      "num_fewshot": 5,
+      "batch_size": 2
+    },
+    {
+      "task": "mmlu_professional_law",
+      "num_fewshot": 5,
+      "batch_size": 1
+    },
+    {
+      "task": "mmlu_world_religions",
+      "num_fewshot": 5,
+      "batch_size": 4
+    }
+  ],
+  "out_dir": "D:\\Projects\\quant-bench-5070ti\\results\\lm_eval\\qwen3-4b__gguf-q4-k-m__transformers__b1__ctx512__gen0__quality__lm-eval-tasks__attn-sdpa",
+  "seed": 1337,
+  "limit": null
+}
