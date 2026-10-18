@@ -83,7 +83,14 @@ def build_eval_stream(model: ModelConfig, eval_cfg: EvalConfig, force: bool = Fa
     from transformers import AutoTokenizer
 
     text = _read_source_text(eval_cfg)
-    tokenizer = AutoTokenizer.from_pretrained(model.hf_repo, revision=model.revision)
+    from quantbench.paths import models_dir
+
+    local = models_dir() / model.slug / "hf"
+    tokenizer = (
+        AutoTokenizer.from_pretrained(local)
+        if (local / "tokenizer.json").exists()
+        else AutoTokenizer.from_pretrained(model.hf_repo, revision=model.revision)
+    )
     ids = np.asarray(tokenizer(text, add_special_tokens=False)["input_ids"], dtype=np.int64)
     if eval_cfg.ppl.max_tokens:
         ids = ids[: eval_cfg.ppl.max_tokens]
@@ -99,6 +106,8 @@ def build_eval_stream(model: ModelConfig, eval_cfg: EvalConfig, force: bool = Fa
         "source": eval_cfg.source,
         "source_sha": sha256_bytes(text.encode("utf-8")),
         "tokenizer_sha": _tokenizer_sha(tokenizer),
+        # Qwen3 has no BOS token: an add_bos request is then a no-op, and records say so.
+        "bos_token_id": tokenizer.bos_token_id,
         "n_tokens": int(ids.size),
         "eval_stream_sha": sha256_bytes(ids.tobytes()),
         "ppl": eval_cfg.ppl.model_dump(),

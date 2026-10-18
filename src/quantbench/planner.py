@@ -98,6 +98,8 @@ def make_run_id(
         f"gen{workload.generate_tokens}",
         workload.kind,
     ]
+    if workload.kind == "quality" and workload.eval_config not in {None, "wikitext2"}:
+        parts.append(slugify(workload.eval_config))
     if engine_spec.kv_cache_dtype and engine_spec.kv_cache_dtype not in {"auto", "f16", "fp16"}:
         parts.append(f"kv-{slugify(engine_spec.kv_cache_dtype)}")
     if engine_spec.attention_backend and engine_spec.attention_backend != "auto":

@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.ticker import NullFormatter
 
 from quantbench.analysis import stats
 
@@ -42,6 +43,12 @@ PALETTE = [
     "#F0E442",  # yellow
     "#000000",  # black
 ]
+
+#: KL estimator -> (line style, legend label). Never pooled on one line (methodology §2).
+ESTIMATOR_STYLES: dict[str, tuple[str, str]] = {
+    "llama-perplexity": ("-", "full-vocab KL vs F16 GGUF (llama.cpp)"),
+    "topk-reference": ("--", "top-128 KL vs BF16 (Transformers)"),
+}
 
 FORMAT_MARKERS = {
     "gguf": "o",
@@ -110,6 +117,22 @@ def _place_caption(fig: Figure) -> None:
     fig.text(0.0, y, text, fontsize=8, va="top", ha="left", wrap=True, color="#444444")
 
 
+def estimator_note(frame: pd.DataFrame) -> str:
+    """Which KL estimator(s) a figure's points came from (methodology §2)."""
+    names = sorted(
+        {str(e) for e in frame.get("kl_estimator", pd.Series(dtype=str)).dropna().unique()}
+    )
+    labels = {
+        "llama-perplexity": "full-vocabulary KL vs F16 GGUF (llama.cpp)",
+        "topk-reference": "top-k KL vs BF16 (Transformers reference)",
+    }
+    if not names:
+        return ""
+    text = "; ".join(labels.get(n, n) for n in names)
+    warn = " Mixed estimators: compare within one only." if len(names) > 1 else ""
+    return f"KL: {text}.{warn}"
+
+
 def hardware_note(frame: pd.DataFrame) -> str:
     gpus = sorted({str(g) for g in frame.get("gpu_name", pd.Series(dtype=str)).dropna().unique()})
     drivers = sorted({str(d) for d in frame.get("driver", pd.Series(dtype=str)).dropna().unique()})
@@ -126,6 +149,11 @@ def vram_note(frame: pd.DataFrame) -> str:
     modes = set(frame.get("vram_accounting", pd.Series(dtype=str)).dropna().unique())
     if modes == {"per_process"}:
         return "Peak is process-level NVML, which exceeds the allocator figure."
+    if modes and modes <= {"per_process", "per_process_wddm"}:
+        return (
+            "Peak is per-process GPU memory (Windows GPU Process Memory counters where NVML "
+            "has none under WDDM), which exceeds the allocator figure."
+        )
     if "device_wide" in modes:
         return (
             "Peak is device-wide NVML minus the pre-load baseline: this driver model (Windows "
@@ -149,6 +177,12 @@ def save(fig: Figure, out_dir: Path, name: str, watermark: bool = False) -> list
             rotation=30,
             transform=fig.transFigure,
         )
+    for ax in fig.axes:
+        # Minor tick labels on a log axis collide ("3x10^-3 4x10^-3"); majors suffice.
+        if ax.get_xscale() == "log":
+            ax.xaxis.set_minor_formatter(NullFormatter())
+        if ax.get_yscale() == "log":
+            ax.yaxis.set_minor_formatter(NullFormatter())
     _place_caption(fig)
     out_dir.mkdir(parents=True, exist_ok=True)
     paths: list[Path] = []
@@ -235,8 +269,9 @@ def fig_headline_pareto(
     ax.legend(handles=handles, title="engine", loc="best")
     caption(
         fig,
-        f"N = {len(joined)} configurations. Marker size ∝ peak VRAM (NVML), shape = format "
-        f"family. Dashed line: Pareto frontier. {hardware_note(frame)}.",
+        f"N = {len(joined)} configurations. Marker size ∝ peak VRAM attributed to the run, "
+        f"shape = format family. Dashed line: Pareto frontier. {estimator_note(joined)} "
+        f"{hardware_note(frame)}.",
     )
     return FigureResult(name=name, paths=save(fig, out_dir, name, watermark), n=len(joined))
 
@@ -255,28 +290,36 @@ def fig_quality_vs_bpw(frame: pd.DataFrame, out_dir: Path, watermark: bool = Fal
     )
     if data.empty:
         return _skip(name, "no rows with both effective_bpw and kl_mean")
-    data = data.assign(family=data["format_variant"].astype(str).str.split(":").str[0])
+    data = data.assign(
+        family=data["format_variant"].astype(str).str.split(":").str[0],
+        estimator=data.get("kl_estimator", pd.Series(index=data.index, dtype=str)).fillna(
+            "unknown"
+        ),
+    )
     colors = _color_map([str(f) for f in data["family"].unique()])
 
     fig, ax = plt.subplots()
-    for family, group in data.groupby("family"):
+    # One series per (family, estimator): a line must never connect points measured by
+    # different KL estimators, or a change of instrument would read as a trend (§6.1).
+    for (family, estimator), group in data.groupby(["family", "estimator"]):
         group = group.sort_values("effective_bpw")
         ax.plot(
             group["effective_bpw"],
             group["kl_mean"],
             marker=FORMAT_MARKERS.get(str(family), "o"),
             color=colors[str(family)],
-            label=str(family),
+            ls=ESTIMATOR_STYLES.get(str(estimator), ("-", ""))[0],
+            label=f"{family} · {ESTIMATOR_STYLES.get(str(estimator), ('', str(estimator)))[1]}",
         )
     ax.set_yscale("log")
     ax.set_xlabel("effective bits per weight (embedding-excluded)")
     ax.set_ylabel("KL divergence vs FP16 (nats/token, log scale)")
     ax.set_title("Quality per bit, by format family")
-    ax.legend(title="format")
+    ax.legend(title="format · KL estimator", fontsize=8)
     caption(
         fig,
-        f"N = {len(data)} configurations. effective_bpw = weight-file bytes x 8 / "
-        f"non-embedding parameters. {hardware_note(frame)}.",
+        f"N = {len(data)} configurations. effective_bpw = non-embedding weight bytes x 8 / "
+        f"non-embedding parameters. {estimator_note(data)} {hardware_note(frame)}.",
     )
     return FigureResult(name=name, paths=save(fig, out_dir, name, watermark), n=len(data))
 
@@ -291,19 +334,26 @@ def fig_ppl_vs_kl(frame: pd.DataFrame, out_dir: Path, watermark: bool = False) -
     needed = {"ppl_wikitext2", "kl_mean"}
     if not needed.issubset(frame.columns):
         return _skip(name, "records carry no perplexity or KL columns")
-    data = frame.dropna(subset=list(needed))
-    reference = data[data["format"].isin(["bf16", "fp16"])]["ppl_wikitext2"]
-    if data.empty or reference.empty:
-        return _skip(name, "needs both quantized rows and an FP16 reference perplexity")
-
-    ref_ppl = float(reference.median())
-    data = data.assign(ppl_delta=data["ppl_wikitext2"] - ref_ppl)
+    if "ppl_reference" not in frame.columns:
+        return _skip(name, "records carry no same-positions reference perplexity")
+    # Each row's delta is against *its own* reference over the identical scored positions:
+    # a single global FP16 PPL would mix chunking conventions across engines (§6.1).
+    data = frame.dropna(subset=[*needed, "ppl_reference"])
+    if data.empty:
+        return _skip(name, "no quantized rows with KL and a same-positions reference PPL")
+    data = data.assign(ppl_delta=data["ppl_wikitext2"] - data["ppl_reference"])
     fig, ax = plt.subplots()
     ax.axhline(0.0, color="#999999", lw=0.8)
-    colors = _color_map([str(e) for e in data["engine"].unique()])
+    est = data.get("kl_estimator", pd.Series(index=data.index, dtype=str)).fillna("unknown")
+    data = data.assign(estimator=est)
+    colors = _color_map([str(e) for e in data["estimator"].unique()])
     for row in data.itertuples():
         ax.scatter(
-            _num(row.kl_mean), _num(row.ppl_delta), color=colors[str(row.engine)], s=45, zorder=3
+            _num(row.kl_mean),
+            _num(row.ppl_delta),
+            color=colors[str(row.estimator)],
+            s=45,
+            zorder=3,
         )
         ax.annotate(
             str(row.format_variant),
@@ -314,13 +364,22 @@ def fig_ppl_vs_kl(frame: pd.DataFrame, out_dir: Path, watermark: bool = False) -
         )
     ax.set_xscale("log")
     ax.set_xlabel("KL divergence vs FP16 (nats/token, log scale)")
-    ax.set_ylabel(f"perplexity delta vs FP16 (PPL_ref = {ref_ppl:.3f})")
+    ax.set_ylabel("perplexity delta vs FP16 reference (same scored positions)")
+    ax.legend(
+        handles=[
+            Line2D([], [], marker="o", ls="", color=c, label=ESTIMATOR_STYLES.get(e, ("", e))[1])
+            for e, c in colors.items()
+        ],
+        title="KL estimator",
+        fontsize=8,
+    )
     ax.set_title("H2: does perplexity delta track KL divergence?")
     caption(
         fig,
         f"N = {len(data)}. Points far right but near zero on the y axis are quants whose "
-        f"perplexity looks harmless while their output distribution has moved. "
-        f"{hardware_note(frame)}.",
+        f"perplexity looks harmless while their output distribution has moved. Each delta "
+        f"is against that row's own reference over identical positions. "
+        f"{estimator_note(data)} {hardware_note(frame)}.",
     )
     return FigureResult(name=name, paths=save(fig, out_dir, name, watermark), n=len(data))
 
@@ -525,7 +584,10 @@ def fig_context_cliff(frame: pd.DataFrame, out_dir: Path, watermark: bool = Fals
     name = "08-context-cliff"
     if "prompt_tokens" not in frame.columns or "status" not in frame.columns:
         return _skip(name, "records lack prompt length or status")
-    ok = _at_batch(frame.loc[frame["status"] == "ok"])
+    ok = frame.loc[frame["status"] == "ok"]
+    if "workload_kind" in ok.columns:
+        ok = ok.loc[ok["workload_kind"] == "latency"]  # quality runs say nothing about context
+    ok = _at_batch(ok)
     if ok.empty:
         return _skip(name, "no successful batch-1 runs")
     grouped = (
@@ -575,56 +637,61 @@ def fig_efficiency(frame: pd.DataFrame, out_dir: Path, watermark: bool = False) 
 
 
 def fig_accuracy_retention(
-    frame: pd.DataFrame, out_dir: Path, watermark: bool = False
+    frame: pd.DataFrame, out_dir: Path, watermark: bool = False, paired: pd.DataFrame | None = None
 ) -> FigureResult:
     name = "10-accuracy-retention"
-    tasks = [c for c in frame.columns if c.startswith("lm_eval_") and not c.endswith("_stderr")]
-    if not tasks:
-        return _skip(name, "no lm-eval results in the records")
-    reference = frame[frame["format"].isin(["bf16", "fp16"])]
-    if reference.empty:
-        return _skip(name, "no FP16 reference row to compute retention against")
-    data = frame.dropna(subset=tasks, how="all")
-    configs = [
-        c for c in data["format_variant"].unique() if str(c).split(":")[0] not in {"bf16", "fp16"}
+    if paired is None or paired.empty:
+        return _skip(name, "no paired lm-eval comparisons (run `quantbench analyze`)")
+    tasks = [
+        t
+        for t in ("arc_challenge", "hellaswag", "gsm8k", "mmlu_subset")
+        if t in set(paired["task"])
     ]
-    if not configs:
-        return _skip(name, "no quantized rows with lm-eval scores")
+    data = paired[paired["task"].isin(tasks)]
+    cands = sorted(data["candidate"].unique())
+    if not tasks or not cands:
+        return _skip(name, "no candidate rows")
 
-    fig, ax = plt.subplots(figsize=(max(8.0, 1.2 * len(configs)), 5.0))
-    width = 0.8 / max(len(tasks), 1)
-    for i, task in enumerate(tasks):
-        ref_value = float(reference[task].median()) if task in reference else float("nan")
-        values, errors = [], []
-        for config in configs:
-            rows = data[data["format_variant"] == config]
-            value = float(rows[task].median()) if task in rows else float("nan")
-            values.append(100.0 * value / ref_value if ref_value else float("nan"))
-            stderr_col = f"{task}_stderr"
-            err = float(rows[stderr_col].median()) if stderr_col in rows.columns else 0.0
-            errors.append(196.0 * err / ref_value if ref_value and pd.notna(err) else 0.0)
-        offsets = [j + i * width for j in range(len(configs))]
+    fig, ax = plt.subplots(figsize=(max(8.0, 1.6 * len(tasks)), 5.0))
+    width = 0.8 / len(cands)
+    for i, cand in enumerate(cands):
+        sub = data[data["candidate"] == cand].set_index("task").reindex(tasks)
+        ret = sub["retention_pct"].astype(float)
+        # paired 95% interval of the score, expressed as % of the reference score
+        lo = 100.0 * (sub["reference"] + sub["ci_low"]) / sub["reference"]
+        hi = 100.0 * (sub["reference"] + sub["ci_high"]) / sub["reference"]
+        x = [j + (i - (len(cands) - 1) / 2) * width for j in range(len(tasks))]
         ax.bar(
-            offsets,
-            values,
-            width=width,
-            yerr=errors,
-            capsize=2,
+            x,
+            ret,
+            width=width * 0.95,
             color=PALETTE[i % len(PALETTE)],
-            label=task.replace("lm_eval_", ""),
+            label=str(cand),
+            yerr=[(ret - lo).to_numpy(), (hi - ret).to_numpy()],
+            capsize=3,
         )
+        for xi, (task_name, row) in zip(x, sub.iterrows(), strict=False):
+            if not bool(row["tied"]):
+                ax.text(xi, float(hi[task_name]) + 0.3, "*", ha="center", fontsize=12)
     ax.axhline(100.0, color="#999999", lw=0.8, ls="--")
-    ax.set_xticks([j + 0.4 - width / 2 for j in range(len(configs))])
-    ax.set_xticklabels([str(c) for c in configs], rotation=45, ha="right", fontsize=8)
-    ax.set_ylabel("score as % of FP16 reference")
+    ax.set_xticks(range(len(tasks)))
+    ax.set_xticklabels(tasks)
+    lowest = float(
+        min(lo.min() for lo in [100.0 * (data["reference"] + data["ci_low"]) / data["reference"]])
+    )
+    ax.set_ylim(min(90.0, lowest - 1.0), 103.0)
+    ax.set_ylabel("score as % of reference (paired 95% interval)")
     ax.set_title("Downstream accuracy retention")
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=8, loc="lower left")
+    n_items = int(data.drop_duplicates("task")["n"].sum())
     caption(
         fig,
-        f"N = {len(data)} rows across {len(tasks)} tasks. Whiskers are 1.96 x lm-eval "
-        f"standard error where reported. {hardware_note(frame)}.",
+        f"{n_items:,} items; every configuration answered the same items with identical "
+        f"prompts. Whiskers: paired per-item 95% interval; * = interval excludes 100% "
+        f"(a real difference, not noise). GGUF scored dequantized via Transformers in fp16, "
+        f"like the reference. {hardware_note(frame)}.",
     )
-    return FigureResult(name=name, paths=save(fig, out_dir, name, watermark), n=len(configs))
+    return FigureResult(name=name, paths=save(fig, out_dir, name, watermark), n=len(data))
 
 
 def fig_imatrix_ablation(
@@ -684,7 +751,10 @@ FIGURES = [
 
 
 def generate_all(
-    frame: pd.DataFrame, out_dir: Path, only: list[str] | None = None
+    frame: pd.DataFrame,
+    out_dir: Path,
+    only: list[str] | None = None,
+    paired: pd.DataFrame | None = None,
 ) -> list[FigureResult]:
     """Regenerate every figure. Missing inputs skip a figure; they never fake one."""
     apply_theme()
@@ -695,7 +765,10 @@ def generate_all(
         if only and not any(token in figure_name for token in only):
             continue
         try:
-            results.append(fn(frame, out_dir, watermark))
+            if fn is fig_accuracy_retention:
+                results.append(fn(frame, out_dir, watermark, paired=paired))
+            else:
+                results.append(fn(frame, out_dir, watermark))
         except Exception as exc:
             results.append(FigureResult(name=figure_name, skipped=True, reason=f"error: {exc}"))
     return results

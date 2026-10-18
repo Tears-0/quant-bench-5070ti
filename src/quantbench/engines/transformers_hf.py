@@ -99,11 +99,30 @@ class TransformersEngine(BaseEngine):
         )
 
     def load(self, spec: RunSpec) -> LoadReport:
+        from quantbench.config import load_eval
+
+        if spec.workload.eval_config and load_eval(spec.workload.eval_config).kind == "lm_eval":
+            # lm-eval loads the checkpoint itself; a second copy here would not fit.
+            self._loaded = True
+            return LoadReport(load_time_s=0.0, extra={"model": "loaded by lm-eval"})
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         self._torch = torch
         source = spec.quant.artifact_path or spec.model.hf_repo
+        if str(source).endswith(".gguf"):
+            # GGUF through Transformers: prefer the one-time fp16 dequantization
+            # (quantbench models dequantize); never re-dequantize on every load.
+            from quantbench.quantize.dequant import dequantized_dir_for
+
+            dequant = dequantized_dir_for(Path(str(source)))
+            if not dequant.exists():
+                raise EngineUnsupported(
+                    f"no dequantized checkpoint at {dequant}; run quantbench models "
+                    "dequantize first (one-time, CPU)"
+                )
+            source = str(dequant)
+            self._meta["loaded_from"] = source
         offload = bool(spec.engine.extra.get("cpu_offload", False))
         kwargs: dict[str, Any] = {
             "dtype": torch.bfloat16 if spec.quant.format in {"bf16", "fp16"} else "auto",
@@ -132,8 +151,11 @@ class TransformersEngine(BaseEngine):
             raise EngineUnsupported(str(exc)) from exc
         self.model.eval()
         load_time = time.perf_counter() - t0
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            spec.model.hf_repo, revision=spec.model.revision
+        local = Path(str(spec.quant.artifact_path or ""))
+        self.tokenizer = (
+            AutoTokenizer.from_pretrained(local)
+            if (local / "tokenizer.json").exists()
+            else AutoTokenizer.from_pretrained(spec.model.hf_repo, revision=spec.model.revision)
         )
         weights_mb = (torch.cuda.memory_allocated() - before) / MB
         self._meta["dtype"] = str(next(self.model.parameters()).dtype)
@@ -248,6 +270,7 @@ class TransformersEngine(BaseEngine):
         ctx = int(tokens.get("ctx", 2048))
         stride = int(tokens.get("stride", ctx))
         topk = int(tokens.get("topk", 128))
+        row_block = int(tokens.get("row_block", 256))
         add_bos = bool(tokens.get("add_bos", True))
         ref_topk_ids = tokens.get("ref_topk_ids")
         bos_id = getattr(self.tokenizer, "bos_token_id", None)
@@ -268,25 +291,35 @@ class TransformersEngine(BaseEngine):
                 if add_bos and bos_id is not None:
                     arr = [bos_id, *arr]
                 inp = torch.tensor([arr], dtype=torch.long, device=self.model.device)
-                logits = self.model(input_ids=inp).logits[0].float()
-                logprobs = torch.log_softmax(logits[:-1], dim=-1)
+                logits = self.model(input_ids=inp).logits[0, :-1]  # model dtype
                 targets = inp[0, 1:]
-
-                vals, idx = torch.topk(logprobs, k=topk, dim=-1)
-                topk_ids.append(idx.cpu().numpy())
-                topk_lps.append(vals.cpu().numpy())
-                tgt_ids.append(targets.cpu().numpy())
-                tgt_lps.append(logprobs.gather(1, targets[:, None]).squeeze(1).cpu().numpy())
-
-                if ref_topk_ids is not None:
-                    n = logprobs.shape[0]
-                    ref_slice = torch.tensor(
+                n = logits.shape[0]
+                ref_rows = (
+                    torch.as_tensor(
                         np.asarray(ref_topk_ids)[position : position + n],
                         dtype=torch.long,
-                        device=logprobs.device,
+                        device=logits.device,
                     )
-                    aligned.append(logprobs.gather(1, ref_slice).cpu().numpy())
-                position += logprobs.shape[0]
+                    if ref_topk_ids is not None
+                    else None
+                )
+                # fp32 log-softmax over row slices: a full [ctx, vocab] fp32 tensor plus its
+                # softmax (2 x 1.2 GB at ctx 2048, vocab 151,936) would not fit next to the
+                # weights on a 16 GB card that the desktop already shares.
+                for lo in range(0, n, row_block):
+                    hi = min(lo + row_block, n)
+                    logprobs = torch.log_softmax(logits[lo:hi].float(), dim=-1)
+                    vals, idx = torch.topk(logprobs, k=topk, dim=-1)
+                    topk_ids.append(idx.cpu().numpy())
+                    topk_lps.append(vals.cpu().numpy())
+                    tgt = targets[lo:hi]
+                    tgt_ids.append(tgt.cpu().numpy())
+                    tgt_lps.append(logprobs.gather(1, tgt[:, None]).squeeze(1).cpu().numpy())
+                    if ref_rows is not None:
+                        aligned.append(logprobs.gather(1, ref_rows[lo:hi]).cpu().numpy())
+                    del logprobs
+                del logits
+                position += n
 
         if not topk_ids:
             raise EngineUnsupported("evaluation stream is too short to score")

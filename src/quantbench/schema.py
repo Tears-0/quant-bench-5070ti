@@ -218,8 +218,13 @@ class MemoryRecord(Mutable):
     #: supports per-process accounting, otherwise device-wide peak minus the pre-load
     #: baseline. ``vram_peak_nvsmi_mb`` stays the raw number that decides whether it fit.
     vram_peak_attributed_mb: float | None = None
-    #: "per_process" or "device_wide" (Windows WDDM and WSL2 offer no per-process figure).
+    #: "per_process" (NVML), "per_process_wddm" (Windows GPU Process Memory counters) or
+    #: "device_wide" (no per-process figure available, e.g. WSL2).
     vram_accounting: str | None = None
+    #: Windows only: peak system memory mapped for this run's GPU work ("Shared Usage"):
+    #: pinned host buffers and, under dedicated-memory pressure, spilled device allocations.
+    #: Spill (shared memory *while* the device is nearly full) makes the run status ``oom``.
+    vram_shared_peak_mb: float | None = None
     effective_bpw: float | None = None
     weight_file_bytes: int | None = None
     weight_bytes_non_embedding: int | None = None
@@ -248,8 +253,9 @@ class PowerRecord(Mutable):
 class PplConfig(Mutable):
     ctx: int
     stride: int
-    tokens: int
-    add_bos: bool
+    tokens: int  # positions actually scored
+    add_bos: bool  # *effective*: false for tokenizers without a BOS token (Qwen3)
+    scoring: str | None = None  # which positions of each chunk were scored, by whom
 
 
 class KLRecord(Mutable):
@@ -259,8 +265,9 @@ class KLRecord(Mutable):
     max: float | None = None
     # KL over a top-k truncated reference distribution carries a tail term; when the tail
     # mass had to be approximated rather than measured, say so in the record (§5.2).
-    topk: int | None = None
+    topk: int | None = None  # None = full-vocabulary KL
     tail_mass_estimated: bool = False
+    estimator: str | None = None  # "topk-reference" | "llama-perplexity"
 
 
 class QualityRecord(Mutable):
@@ -268,13 +275,20 @@ class QualityRecord(Mutable):
     eval_stream_sha: str | None = None
     ppl_wikitext2: float | None = None
     ppl_config: PplConfig | None = None
+    #: Perplexity of the reference over the same scored positions, so PPL deltas never
+    #: mix chunking conventions (§6.1).
+    ppl_reference: float | None = None
     kl_div: KLRecord = Field(default_factory=KLRecord)
     top1_agreement: float | None = None
     top5_agreement: float | None = None
     lm_eval: dict[str, float | None] = Field(default_factory=dict)
+    #: Set when lm-eval ran with --limit: a plumbing check, never a publishable score.
+    lm_eval_limit: int | None = None
     longctx_retrieval: dict[str, float | None] = Field(default_factory=dict)
     # §7.2: when latency and quality came from different backends, the record says so.
     scored_by_engine: str | None = None
+    #: The scored token ids were checked against the hashed reference-tokenizer stream.
+    token_stream_verified: bool | None = None
     calibration_disjoint_from_eval: bool | None = None
 
 

@@ -73,6 +73,10 @@ class GpuSample:
     temp_c: float | None
     sm_clock_mhz: float | None
     throttle_bits: int | None
+    #: Windows only: tracked processes' GPU memory spilled to system RAM (WDDM counters).
+    shared_mb: float | None = None
+    #: "nvml" or "wddm" when process_used_mb is per-process; None when it is absent.
+    process_source: str | None = None
 
 
 @dataclass
@@ -95,6 +99,7 @@ class NvmlSampler:
     _pynvml: Any = None
     _handle: Any = None
     _t0: float = 0.0
+    _wddm: Any = None
 
     def track_pid(self, pid: int) -> None:
         """Attribute another process's VRAM to this run (engine servers, quantizers)."""
@@ -108,6 +113,12 @@ class NvmlSampler:
             self._pynvml.nvmlInit()
             self._handle = self._pynvml.nvmlDeviceGetHandleByIndex(self.device_index)
             self.available = True
+            from quantbench.metrics import wddm
+
+            self._wddm = wddm.open_counters()
+            from quantbench.metrics import wddm
+
+            self._wddm = wddm.open_counters()
         except Exception as exc:
             self.available = False
             self.error = str(exc)
@@ -125,6 +136,10 @@ class NvmlSampler:
         if self.available and self._pynvml is not None:
             with suppress(Exception):
                 self._pynvml.nvmlShutdown()
+        if self._wddm is not None:
+            with suppress(Exception):
+                self._wddm.close()
+            self._wddm = None
         return self.samples
 
     @contextmanager
@@ -151,10 +166,21 @@ class NvmlSampler:
 
     def poll(self) -> GpuSample:
         p, h = self._pynvml, self._handle
+        process_mb = self._process_memory_mb()
+        source = "nvml" if process_mb is not None else None
+        shared_mb: float | None = None
+        if self._wddm is not None:
+            per_process = _try(lambda: self._wddm.sample(set(self.pids)))
+            if per_process is not None:
+                shared_mb = per_process.shared_mb
+                if process_mb is None:  # WDDM: NVML has no per-process figure
+                    process_mb, source = per_process.dedicated_mb, "wddm"
         return GpuSample(
             t_s=time.perf_counter() - self._t0,
             device_used_mb=_try(lambda: p.nvmlDeviceGetMemoryInfo(h).used / MB),
-            process_used_mb=self._process_memory_mb(),
+            process_used_mb=process_mb,
+            shared_mb=shared_mb,
+            process_source=source,
             power_w=_try(lambda: p.nvmlDeviceGetPowerUsage(h) / 1000.0),
             temp_c=_try(lambda: float(p.nvmlDeviceGetTemperature(h, p.NVML_TEMPERATURE_GPU))),
             sm_clock_mhz=_try(lambda: float(p.nvmlDeviceGetClockInfo(h, p.NVML_CLOCK_SM))),
@@ -206,6 +232,36 @@ def _try(fn: Any) -> Any:
 # -- pure summarisation (unit-tested without a GPU) --------------------------------------
 
 
+def spill_suspected(
+    samples: list[GpuSample],
+    total_mb: float | None,
+    shared_threshold_mb: float = 256.0,
+    margin_mb: float = 1024.0,
+) -> bool:
+    """Sysmem fallback: shared memory grew *while* the device was nearly full.
+
+    Evaluated per sample, so a pinned host buffer early in a run and a near-full device
+    later do not combine into a false positive.
+    """
+    if not total_mb:
+        return False
+    for s in samples:
+        if (
+            s.shared_mb is not None
+            and s.shared_mb > shared_threshold_mb
+            and s.device_used_mb is not None
+            and s.device_used_mb >= total_mb - margin_mb
+        ):
+            return True
+    return False
+
+
+def peak_shared_mb(samples: list[GpuSample]) -> float | None:
+    """Peak GPU memory of the tracked processes that lived in system RAM (Windows)."""
+    shared = [s.shared_mb for s in samples if s.shared_mb is not None]
+    return max(shared) if shared else None
+
+
 def peak_process_mb(samples: list[GpuSample]) -> float | None:
     """Peak process-attributed VRAM; falls back to device-wide when per-PID is unavailable
     (WSL2 does not implement per-process accounting)."""
@@ -217,7 +273,12 @@ def peak_process_mb(samples: list[GpuSample]) -> float | None:
 
 
 def vram_accounting_mode(samples: list[GpuSample]) -> str | None:
-    """Which VRAM accounting the samples support: ``per_process`` or ``device_wide``."""
+    """``per_process`` (NVML), ``per_process_wddm`` (Windows counters) or ``device_wide``."""
+    sources = {s.process_source for s in samples if s.process_used_mb is not None}
+    if "nvml" in sources:
+        return "per_process"
+    if "wddm" in sources:
+        return "per_process_wddm"
     if any(s.process_used_mb is not None for s in samples):
         return "per_process"
     if any(s.device_used_mb is not None for s in samples):

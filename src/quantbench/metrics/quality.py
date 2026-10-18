@@ -188,9 +188,16 @@ def parse_lm_eval_output(payload: dict[str, Any]) -> dict[str, float | None]:
         if not isinstance(metrics, dict):
             continue
         value: float | None = None
+        stderr: float | None = None
         for key in preferred:
             if key in metrics and isinstance(metrics[key], int | float):
                 value = float(metrics[key])
+                # "acc_norm,none" -> "acc_norm_stderr,none"
+                name, _, filt = key.partition(",")
+                err = metrics.get(f"{name}_stderr,{filt}" if filt else f"{name}_stderr")
+                stderr = float(err) if isinstance(err, int | float) else None
                 break
         out[task] = value
+        if value is not None:
+            out[f"{task}_stderr"] = stderr
     return out

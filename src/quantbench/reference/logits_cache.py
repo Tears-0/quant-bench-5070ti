@@ -85,9 +85,97 @@ def load_reference(key: ReferenceKey) -> LogprobArtifact:
     return LogprobArtifact.load(path)
 
 
+def write_reference_meta_at(path: Path, payload: dict[str, Any]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    return path
+
+
 def write_reference_meta(key: ReferenceKey, extra: dict[str, Any]) -> Path:
     payload = {"reference_id": key.reference_id, "key": key.__dict__, **extra}
     path = meta_path(key)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return path
+
+
+# --------------------------------------------------------------------------------------
+# llama.cpp native KL base (GGUF formats)
+# --------------------------------------------------------------------------------------
+#
+# For GGUF, §5.2.3's preferred path is llama-perplexity's own base-file workflow: the F16
+# GGUF is run once with --kl-divergence-base, which stores the full-vocabulary log-probs of
+# every scored position, and each quant is then scored against it. The KL is therefore
+# exact over the whole vocabulary (no top-k truncation), computed with llama.cpp's own
+# kernels, and within one engine. The header also stores the exact token ids that were
+# scored, which is what lets the harness *verify* — rather than assume — that llama.cpp
+# and the reference tokenizer produced the same stream (§6.6).
+
+_KLD_MAGIC = b"_logits_"
+
+
+@dataclass
+class KldHeader:
+    n_ctx: int
+    n_vocab: int
+    n_chunk: int
+    tokens: Any  # numpy int32 array, n_ctx * n_chunk
+
+    @property
+    def scored_positions(self) -> int:
+        """llama-perplexity scores positions n_ctx/2 .. n_ctx-2 of every chunk."""
+        return self.n_chunk * (self.n_ctx - 1 - self.n_ctx // 2)
+
+
+def read_kld_header(path: Path) -> KldHeader:
+    import numpy as np
+
+    with path.open("rb") as fh:
+        if fh.read(8) != _KLD_MAGIC:
+            raise ValueError(f"{path} is not a llama-perplexity KL-divergence base file")
+        n_ctx, n_vocab, n_chunk = np.frombuffer(fh.read(12), dtype="<i4").tolist()
+        tokens = np.frombuffer(fh.read(4 * n_ctx * n_chunk), dtype="<i4")
+    if tokens.size != n_ctx * n_chunk:
+        raise ValueError(f"{path} is truncated: expected {n_ctx * n_chunk} tokens")
+    return KldHeader(n_ctx=int(n_ctx), n_vocab=int(n_vocab), n_chunk=int(n_chunk), tokens=tokens)
+
+
+@dataclass
+class LlamaCppBaseKey:
+    model: str
+    base_artifact_sha256: str
+    corpus_sha: str
+    ctx: int
+    chunks: int
+
+    @property
+    def digest(self) -> str:
+        return sha256_of(self.__dict__).removeprefix("sha256:")[:24]
+
+    @property
+    def path(self) -> Path:
+        return reference_cache_dir() / self.model / f"llamacpp-f16-{self.digest}.kld"
+
+    @property
+    def reference_id(self) -> str:
+        return f"{self.model}-f16gguf@{self.base_artifact_sha256.removeprefix('sha256:')[:12]}"
+
+
+def llamacpp_base_key(
+    model: ModelConfig, eval_cfg: EvalConfig, eval_stream_meta: dict[str, Any], base_sha: str
+) -> LlamaCppBaseKey:
+    return LlamaCppBaseKey(
+        model=model.slug,
+        base_artifact_sha256=base_sha,
+        corpus_sha=str(eval_stream_meta["source_sha"]),
+        ctx=eval_cfg.ppl.ctx,
+        chunks=eval_cfg.native_kld_chunks,
+    )
+
+
+def artifact_sha_from_manifest(artifact: Path) -> str | None:
+    manifest = Path(str(artifact) + ".manifest.json")
+    if not manifest.exists():
+        return None
+    value = json.loads(manifest.read_text(encoding="utf-8")).get("sha256")
+    return str(value) if value else None

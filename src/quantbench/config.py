@@ -129,6 +129,16 @@ class EvalConfig(ConfigModel):
     ppl: PplConfigYaml = Field(default_factory=PplConfigYaml)
     reference: ReferenceConfig = Field(default_factory=ReferenceConfig)
     lm_eval_tasks: list[dict[str, Any]] = Field(default_factory=list)
+    #: llama-perplexity stores the *full-vocabulary* base distribution (~2 bytes x vocab per
+    #: scored token: ~304 KB/token for Qwen3's 151,936-token vocabulary), so the native
+    #: GGUF KL path scores a fixed, recorded number of chunks rather than the whole corpus.
+    native_kld_chunks: int = 40
+    #: Fixed, recorded batch size. lm-eval's 'auto' probes for the largest batch that
+    #: does not OOM; with Windows sysmem fallback nothing OOMs, so 'auto' spills.
+    lm_eval_batch_size: int = 1  # fallback only; tuned per task: quantbench lmeval-tune
+    #: One compute dtype for the reference and every quant, so weights are the only
+    #: variable. fp16 also holds dequantized GGUF values more exactly than bf16.
+    lm_eval_dtype: str = "float16"
     calibration_disjoint_from: list[str] = Field(default_factory=list)
     notes: str | None = None
 

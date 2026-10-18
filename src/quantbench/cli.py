@@ -46,7 +46,10 @@ from quantbench.paths import (
 from quantbench.planner import Plan, build_plan
 from quantbench.runner import Runner, RunnerOptions
 
-if TYPE_CHECKING:  # producers pull in heavy tooling and are imported at call time only
+if TYPE_CHECKING:
+    import pandas as pd
+
+    # producers pull in heavy tooling and are imported at call time only
     from quantbench.quantize.base import QuantizeResult
 
 if TYPE_CHECKING:  # imported lazily at call time; the producers pull in heavy tooling
@@ -194,6 +197,44 @@ def models_inspect(
         console.print(f"updated {target}: {', '.join(changed)}")
 
 
+@models_app.command("dequantize")
+def models_dequantize(
+    model: Annotated[str, typer.Option(help="model name or config path")],
+    variants: Annotated[str, typer.Option(help="comma-separated GGUF variants, e.g. Q8_0,Q4_K_M")],
+    dtype: Annotated[str, typer.Option(help="float16 (default) or bfloat16")] = "float16",
+    force: Annotated[bool, typer.Option(help="rebuild even if present")] = False,
+) -> None:
+    """Dequantize GGUF quants once to safetensors for the Transformers-side evaluations.
+
+    Run from the engine environment (requirements/hf.txt). Each output carries a provenance
+    manifest naming the source GGUF and its SHA-256.
+    """
+    from quantbench.config import load_format
+    from quantbench.planner import artifact_path_for
+    from quantbench.quantize.dequant import dequantize_gguf, dequantized_dir_for
+
+    model_cfg = load_model(model)
+    hf_dir = models_dir() / model_cfg.slug / "hf"
+    fmt = load_format("gguf")
+    failed = []
+    for variant in [v.strip() for v in variants.split(",") if v.strip()]:
+        gguf = Path(str(artifact_path_for(fmt, model_cfg, variant)))
+        target = dequantized_dir_for(gguf, dtype)
+        if target.exists() and not force:
+            console.print(f"[green]{variant}[/] already dequantized: {target}")
+            continue
+        console.print(f"dequantizing {gguf} -> {target} ({dtype})")
+        try:
+            result = dequantize_gguf(gguf, hf_dir, dtype=dtype, force=force)
+        except Exception as exc:
+            console.print(f"[red]{variant} failed:[/] {exc}")
+            failed.append(variant)
+            continue
+        console.print(f"[green]{variant}[/] -> {result.artifact_path} ({result.duration_s:.0f}s)")
+    if failed:
+        raise typer.Exit(1)
+
+
 @models_app.command("prune")
 def models_prune(
     keep: Annotated[list[str] | None, typer.Option(help="artifact substrings to keep")] = None,
@@ -329,15 +370,29 @@ def reference_build(
     eval_config: Annotated[
         str, typer.Option("--eval", help="configs/eval/<name>.yaml")
     ] = "wikitext2",
+    engine: Annotated[
+        str,
+        typer.Option(
+            help="transformers: BF16 top-k reference cache (all formats); "
+            "llama.cpp: F16-GGUF full-vocabulary KL base (GGUF formats)"
+        ),
+    ] = "transformers",
     cpu_offload: Annotated[
-        bool, typer.Option(help="offload to CPU/RAM for models that do not fit")
-    ] = True,
+        bool | None,
+        typer.Option(
+            "--cpu-offload/--no-cpu-offload",
+            help="default: from the model's reference_strategy (live = on-GPU)",
+        ),
+    ] = None,
     force: Annotated[bool, typer.Option(help="rebuild even if cached")] = False,
 ) -> None:
-    """Run FP16 once over the fixed eval stream and cache its top-k logits (§5.2).
+    """Build a model's quality reference once over the fixed eval stream (§5.2).
 
-    Slow by design, and it happens once per (model, tokenizer, eval stream).
+    Slow by design, and it happens once per (model, tokenizer, eval stream). The run is
+    recorded like any other, so its PPL, duration and power are in results/raw/.
     """
+    from quantbench.config import load_format
+    from quantbench.planner import artifact_path_for
     from quantbench.reference import eval_stream as eval_stream_mod
     from quantbench.reference import logits_cache
     from quantbench.schema import (
@@ -351,37 +406,97 @@ def reference_build(
 
     model_cfg = load_model(model)
     eval_cfg = load_eval(eval_config)
-    console.print("building the evaluation token stream (hashed, byte-identical across engines)")
-    stream = eval_stream_mod.build_eval_stream(model_cfg, eval_cfg, force=force)
-    console.print(f"  {stream.n_tokens:,} tokens, sha {stream.sha}")
+    stream_dir = eval_stream_mod.stream_dir(model_cfg, eval_cfg)
+    if (stream_dir / "tokens.npy").exists() and not force:
+        stream = eval_stream_mod.load_eval_stream(stream_dir)
+    else:
+        console.print("building the evaluation token stream (hashed, identical across engines)")
+        stream = eval_stream_mod.build_eval_stream(model_cfg, eval_cfg, force=force)
+    console.print(f"  stream: {stream.n_tokens:,} tokens, sha {stream.sha}")
 
-    key = logits_cache.key_for(model_cfg, eval_cfg, stream.meta)
-    if logits_cache.has_reference(key) and not force:
-        console.print(f"[green]reference already cached[/]: {logits_cache.reference_path(key)}")
-        return
-
-    spec = RunSpec(
-        run_id=f"{model_cfg.slug}__reference-fp16__{eval_cfg.name}",
-        model=ModelRef(
-            name=model_cfg.name,
-            hf_repo=model_cfg.hf_repo,
-            revision=model_cfg.revision,
-            tier=model_cfg.tier,
-            params_total=model_cfg.params_total,
-            params_non_embedding=model_cfg.params_non_embedding,
-        ),
-        quant=QuantSpec(format="bf16", variant="reference", bits_nominal=16),
-        engine=EngineSpec(
-            name=model_cfg.reference_engine,
-            attention_backend="sdpa",
-            extra={"cpu_offload": cpu_offload},
-        ),
-        workload=WorkloadSpec(kind="quality", generate_tokens=0, eval_config=eval_cfg.name),
-        protocol=ProtocolSpec(warmup_iters=0, measured_iters=1, timeout_s=24 * 3600),
+    model_ref = ModelRef(
+        name=model_cfg.name,
+        hf_repo=model_cfg.hf_repo,
+        revision=model_cfg.revision,
+        tier=model_cfg.tier,
+        params_total=model_cfg.params_total,
+        params_non_embedding=model_cfg.params_non_embedding,
+        tokenizer_sha256=model_cfg.tokenizer_sha256,
     )
+    workload = WorkloadSpec(kind="quality", generate_tokens=0, eval_config=eval_cfg.name)
+    protocol = ProtocolSpec(warmup_iters=0, measured_iters=1, timeout_s=24 * 3600)
+
+    if engine == "llama.cpp":
+        fmt = load_format("gguf")
+        f16 = artifact_path_for(fmt, model_cfg, "F16")
+        base_sha = logits_cache.artifact_sha_from_manifest(Path(str(f16)))
+        if base_sha is None:
+            console.print(f"[red]F16 GGUF or its manifest missing:[/] {f16}")
+            raise typer.Exit(1)
+        key = logits_cache.llamacpp_base_key(model_cfg, eval_cfg, stream.meta, base_sha)
+        if key.path.exists() and not force:
+            console.print(f"[green]llama.cpp KL base already cached[/]: {key.path}")
+            return
+        spec = RunSpec(
+            run_id=f"{model_cfg.slug}__gguf-f16__llama-cpp__reference__{eval_cfg.name}",
+            model=model_ref,
+            quant=QuantSpec(
+                format="gguf",
+                variant="F16",
+                bits_nominal=16,
+                artifact_path=f16,
+                artifact_sha256=base_sha,
+                producer=fmt.producer,
+            ),
+            engine=EngineSpec(name="llama.cpp", attention_backend="cuda-fa", kv_cache_dtype="f16"),
+            workload=workload,
+            protocol=protocol,
+        )
+    elif engine == "transformers":
+        key_t = logits_cache.key_for(model_cfg, eval_cfg, stream.meta)
+        if logits_cache.has_reference(key_t) and not force:
+            path = logits_cache.reference_path(key_t)
+            console.print(f"[green]reference already cached[/]: {path}")
+            return
+        offload = (
+            cpu_offload if cpu_offload is not None else model_cfg.reference_strategy == "cached"
+        )
+        local = models_dir() / model_cfg.slug / "hf"
+        spec = RunSpec(
+            run_id=f"{model_cfg.slug}__bf16-reference__transformers__reference__{eval_cfg.name}",
+            model=model_ref,
+            quant=QuantSpec(
+                format="bf16",
+                variant="reference",
+                bits_nominal=16,
+                # the pinned local checkout, so the reference never silently re-downloads
+                artifact_path=str(local) if local.exists() else None,
+            ),
+            engine=EngineSpec(
+                name="transformers",
+                attention_backend="sdpa",
+                extra={"cpu_offload": offload},
+            ),
+            workload=workload,
+            protocol=protocol,
+        )
+    else:
+        console.print(f"[red]unknown reference engine {engine!r}[/]")
+        raise typer.Exit(2)
+
+    console.print(f"running {spec.run_id}")
     record = Runner(RunnerOptions(cooldown=False)).execute(spec)
     Runner.write_record(record, raw_dir())
-    console.print(f"status: [bold]{record.status.value}[/]  ppl={record.quality.ppl_wikitext2}")
+    q = record.quality
+    console.print(
+        f"status: [bold]{record.status.value}[/]  ppl={q.ppl_wikitext2}  "
+        f"scored={q.ppl_config.tokens if q.ppl_config else None}  "
+        f"token_stream_verified={q.token_stream_verified}  {record.duration_s:.0f}s"
+    )
+    for warning in record.warnings:
+        console.print(f"  [yellow]warning:[/] {warning}")
+    for name, value in record.artifacts.items():
+        console.print(f"  [dim]{name}: {value}[/]")
     if record.error:
         console.print(f"[red]{record.error}[/]")
         raise typer.Exit(1)
@@ -488,6 +603,12 @@ def analyze(
 
     frame, problems = consolidate(results, out=out, allow_synthetic=allow_synthetic)
     console.print(f"{len(frame)} records -> [bold]{out}[/]")
+    from quantbench.analysis.paired import from_frame, paired_path
+
+    paired = from_frame(frame, Path(results) / "lm_eval")
+    if not paired.empty:
+        paired.to_parquet(paired_path(out), index=False)
+        console.print(f"{len(paired)} paired lm-eval comparisons -> [bold]{paired_path(out)}[/]")
     if not frame.empty:
         counts = frame["status"].value_counts().to_dict()
         console.print("  " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
@@ -510,7 +631,7 @@ def plot(
 
     frame = read_frame(results, allow_synthetic=allow_synthetic)
     ensure_dirs(out)
-    figures = generate_all(frame, out)
+    figures = generate_all(frame, out, paired=_read_paired(results))
     table = Table(title=f"figures -> {out}")
     table.add_column("figure")
     table.add_column("status")
@@ -547,13 +668,130 @@ def report(
         import pandas as pd
 
         frame = pd.DataFrame()
-    sections = build_sections(frame)
+    sections = build_sections(frame, paired=_read_paired(results))
     files = targets or [Path("README.md"), Path("docs/findings.md")]
     for path in files:
         updated = apply_sections(path, sections)
         console.print(
             f"{path}: updated {', '.join(updated) if updated else 'nothing (no markers)'}"
         )
+
+
+@app.command("lmeval-tune")
+def lmeval_tune(
+    model: Annotated[str, typer.Option(help="model name or config path")],
+    eval_config: Annotated[str, typer.Option("--eval")] = "lm_eval_tasks",
+    margin_mib: Annotated[float, typer.Option(help="VRAM kept free below the budget")] = 1536.0,
+    seed: Annotated[int, typer.Option()] = 1337,
+) -> None:
+    """Measure the best lm-eval batch size per task within the VRAM budget.
+
+    Run from the engine environment with nothing else on the GPU. Writes
+    configs/eval/lm_eval_batch/<model>.yaml with every probe, for review.
+    """
+    import torch
+    import yaml
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    from quantbench import lmeval_tune as lt
+    from quantbench.paths import configs_dir
+
+    model_cfg = load_model(model)
+    eval_cfg = load_eval(eval_config)
+    hf_dir = models_dir() / model_cfg.slug / "hf"
+    tokenizer = AutoTokenizer.from_pretrained(hf_dir)
+
+    console.print("[bold]1. profiling lm-eval requests[/] (lm-eval's own task objects)")
+    profiles = []
+    for task in eval_cfg.lm_eval_tasks:
+        prof = lt.profile_task(str(task["task"]), int(task.get("num_fewshot", 0)), tokenizer, seed)
+        profiles.append(prof)
+        console.print(
+            f"  {prof.task:34s} {prof.request_type:15s} n={prof.n_requests:6d} "
+            f"max_len={prof.max_len:5d} mean={prof.mean_len:7.1f} gen={prof.max_gen_toks}"
+        )
+
+    dtype = {"float16": torch.float16, "bfloat16": torch.bfloat16}[eval_cfg.lm_eval_dtype]
+    console.print(f"[bold]2. loading {hf_dir} as {eval_cfg.lm_eval_dtype}[/]")
+    lm = AutoModelForCausalLM.from_pretrained(
+        hf_dir, dtype=dtype, device_map={"": 0}, attn_implementation="sdpa"
+    ).eval()
+
+    check = _fp16_sanity(lm, model_cfg)
+    console.print(f"  {eval_cfg.lm_eval_dtype} sanity vs BF16 reference: {check}")
+
+    budget = lt.budget_mib(margin_mib)
+    console.print(f"[bold]3. budget[/] {budget}")
+    shared = lt._spill_sampler()
+    tunings = []
+    for prof in profiles:
+        tunings.append(
+            lt.tune_task(
+                lm,
+                prof,
+                budget["budget_reserved_mib"],
+                shared,
+                int(tokenizer.eos_token_id),
+                log=console.print,
+            )
+        )
+    payload = lt.to_yaml_payload(model_cfg.slug, eval_cfg.lm_eval_dtype, budget, tunings)
+    payload["fp16_sanity"] = check
+    out = lt.tuning_path(configs_dir(), model_cfg.slug)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        "# Generated by `quantbench lmeval-tune`; see src/quantbench/lmeval_tune.py.\n"
+        + yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+    total = sum(t.est_minutes or 0 for t in tunings)
+    console.print(f"[bold]4. chosen[/] -> {out}")
+    for t in tunings:
+        console.print(
+            f"  {t.profile.task:34s} batch {t.batch_size:4d}  ~{t.est_minutes or 0:6.1f} min"
+        )
+    console.print(f"  estimated GPU time per configuration: ~{total:.0f} min (forward passes only)")
+
+
+def _fp16_sanity(lm: object, model_cfg: object) -> dict[str, float | bool]:
+    """fp16 activations can overflow; compare one eval chunk with the BF16 reference."""
+    import numpy as np
+    import torch
+
+    from quantbench.config import load_eval as _load_eval
+    from quantbench.reference import eval_stream as es
+    from quantbench.reference import logits_cache
+
+    eval_cfg = _load_eval("wikitext2")
+    stream = es.load_eval_stream(es.stream_dir(model_cfg, eval_cfg))  # type: ignore[arg-type]
+    ref = logits_cache.load_reference(logits_cache.key_for(model_cfg, eval_cfg, stream.meta))  # type: ignore[arg-type]
+    ctx = eval_cfg.ppl.ctx
+    ids = torch.tensor([stream.ids[:ctx].tolist()], device="cuda")
+    with torch.inference_mode():
+        logits = lm(input_ids=ids).logits[0, :-1].float()  # type: ignore[operator]
+        lp = torch.log_softmax(logits, dim=-1)
+        target = lp.gather(1, ids[0, 1:, None]).squeeze(1).cpu().numpy()
+        top1 = lp.argmax(dim=-1).cpu().numpy()
+    n = target.size
+    ref_target = ref.target_logprobs[:n]
+    return {
+        "finite": bool(np.isfinite(target).all()),
+        "nll_this_dtype": round(float(-target.mean()), 5),
+        "nll_bf16_reference": round(float(-ref_target.mean()), 5),
+        "abs_diff": round(float(abs(target.mean() - ref_target.mean())), 5),
+        "top1_agreement": round(float((top1 == ref.topk_ids[:n, 0]).mean()), 5),
+        "positions": int(n),
+    }
+
+
+def _read_paired(results: Path) -> pd.DataFrame | None:
+    """The paired lm-eval table written by `analyze`, if any."""
+    import pandas as pd
+
+    from quantbench.analysis.paired import paired_path
+
+    path = paired_path(Path(results)) if Path(results).suffix == ".parquet" else None
+    return pd.read_parquet(path) if path is not None and path.exists() else None
 
 
 @app.command("configs")

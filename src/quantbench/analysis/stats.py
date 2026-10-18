@@ -150,6 +150,8 @@ def quality_vs_latency(
             "top5_agreement",
             "scored_by_engine",
             "kl_tail_estimated",
+            "kl_estimator",
+            "ppl_reference",
         )
         if c in quality.columns
     ]

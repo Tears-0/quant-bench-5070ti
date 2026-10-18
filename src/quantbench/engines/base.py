@@ -18,6 +18,7 @@ CLI must stay usable on a machine where vLLM will not even import (§11.1).
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -127,6 +128,13 @@ class BaseEngine:
 
     def __init__(self) -> None:
         self._loaded = False
+        #: Set by the worker: engines call it with the PID of any child process that holds
+        #: the model (llama-perplexity, lm-eval), so its VRAM is attributed to the run.
+        self.child_pid_hook: Callable[[int], None] | None = None
+
+    def _register_child(self, pid: int) -> None:
+        if self.child_pid_hook is not None:
+            self.child_pid_hook(pid)
 
     def preflight(self, spec: RunSpec) -> PreflightResult:
         return PreflightResult(ok=True, can_generate=True, can_score=False)

@@ -130,20 +130,53 @@ def parse_load_facts(log_text: str) -> dict[str, object]:
     return facts
 
 
-_PPL_RE = re.compile(r"Final estimate:\s*PPL\s*=\s*([\d.]+)", re.IGNORECASE)
-_MEAN_KLD_RE = re.compile(r"Mean\s+KLD:\s*([\d.eE+-]+)")
-_MAX_KLD_RE = re.compile(r"Maximum\s+KLD:\s*([\d.eE+-]+)")
-_P99_KLD_RE = re.compile(r"99\.0%\s+KLD:\s*([\d.eE+-]+)")
-_P90_KLD_RE = re.compile(r"90\.0%\s+KLD:\s*([\d.eE+-]+)")
-_TOP1_RE = re.compile(r"Same top p:\s*([\d.]+)")
-
-
 def _bin(name: str, env_var: str) -> str:
     if (bin_dir := os.environ.get("LLAMA_CPP_BIN_DIR")) and not os.environ.get(env_var):
         candidate = Path(bin_dir) / (name + (".exe" if os.name == "nt" else ""))
         if candidate.exists():
             return str(candidate)
     return find_binary(name, env_var)
+
+
+_PPL_PATTERNS: dict[str, re.Pattern[str]] = {
+    # base-writing / plain mode
+    "ppl": re.compile(r"Final estimate:\s*PPL\s*=\s*([\d.]+)"),
+    # --kl-divergence mode
+    "ppl_q": re.compile(r"Mean PPL\(Q\)\s*:\s*([\d.]+)"),
+    "ppl_base": re.compile(r"Mean PPL\(base\)\s*:\s*([\d.]+)"),
+    "kl_mean": re.compile(r"Mean\s+KLD:\s*([\d.eE+-]+)"),
+    "kl_mean_unc": re.compile(r"Mean\s+KLD:\s*[\d.eE+-]+\s*±\s*([\d.eE+-]+)"),
+    "kl_max": re.compile(r"Maximum KLD:\s*([\d.eE+-]+)"),
+    "kl_p99": re.compile(r"99\.0%\s+KLD:\s*([\d.eE+-]+)"),
+    "kl_p90": re.compile(r"90\.0%\s+KLD:\s*([\d.eE+-]+)"),
+    "kl_median": re.compile(r"Median\s+KLD:\s*([\d.eE+-]+)"),
+    "top1_agreement": re.compile(r"Same top p:\s*([\d.]+)"),
+    "top1_agreement_unc": re.compile(r"Same top p:\s*[\d.]+\s*±\s*([\d.]+)"),
+    "rms_dp_pct": re.compile(r"RMS Δp\s*:\s*([\d.]+)"),
+}
+
+
+def parse_perplexity_output(text: str) -> dict[str, float]:
+    """Normalise llama-perplexity's report. Percentages become fractions; ``ppl`` is the
+    candidate's perplexity in either mode."""
+    out: dict[str, float] = {}
+    for key, pattern in _PPL_PATTERNS.items():
+        if m := pattern.search(text):
+            out[key] = float(m.group(1))
+    for key in ("top1_agreement", "top1_agreement_unc"):
+        if key in out:
+            out[key] /= 100.0
+    if "ppl_q" in out:
+        out["ppl"] = out.pop("ppl_q")
+    return out
+
+
+def _is_lm_eval(spec: RunSpec) -> bool:
+    """lm-eval workloads talk to llama-server; perplexity workloads do not need it."""
+    from quantbench.config import load_eval
+
+    name = spec.workload.eval_config
+    return bool(name) and load_eval(str(name)).kind == "lm_eval"
 
 
 class LlamaCppEngine(BaseEngine):
@@ -212,7 +245,12 @@ class LlamaCppEngine(BaseEngine):
             "--fit",
             "off",
             "-c",
-            str((w.prompt_tokens + w.generate_tokens) * max(1, w.batch_size)),
+            # lm-eval prompts (8-shot GSM8K, 5-shot MMLU) need far more than a latency spec
+            str(
+                8192
+                if w.kind == "quality"
+                else (w.prompt_tokens + w.generate_tokens) * max(1, w.batch_size)
+            ),
             "-np",
             str(max(1, w.batch_size)),
             "-b",
@@ -242,6 +280,19 @@ class LlamaCppEngine(BaseEngine):
         return cmd
 
     def load(self, spec: RunSpec) -> LoadReport:
+        if spec.workload.kind == "quality" and not _is_lm_eval(spec):
+            # Quality is scored by llama-perplexity, which loads its own copy of the model.
+            # Starting llama-server as well would hold two copies in VRAM (F16 4B: 2 x 7.7
+            # GiB, more than this host has free) and measure nothing.
+            artifact = Path(str(spec.quant.artifact_path))
+            self._model_path = artifact
+            self._meta["attention_backend"] = spec.engine.attention_backend or "auto"
+            self._loaded = True
+            return LoadReport(
+                load_time_s=0.0,
+                weight_file_bytes=artifact.stat().st_size if artifact.exists() else None,
+                extra={"server": "not started (quality workload)"},
+            )
         port = free_port()
         log_path = logs_dir() / f"llamacpp-{spec.run_id}.log"
         self.server = ManagedServer(
@@ -363,68 +414,84 @@ class LlamaCppEngine(BaseEngine):
     def score(self, tokens: Any, spec: RunSpec) -> ScoreReport:
         """Run ``llama-perplexity`` and normalise its output into this repo's schema.
 
-        ``tokens`` is a mapping with ``text_path`` (the evaluation stream as raw text) and
-        optionally ``kl_base`` (a reference file produced by ``--kl-divergence-base``). The
-        PPL chunking parameters come from the eval config and are echoed into the record.
+        ``tokens`` is a mapping with ``text_path`` (the evaluation corpus as raw text),
+        ``ctx``, and exactly one of:
+
+        * ``write_kl_base`` — run this (F16) model and store its full-vocabulary log-probs
+          for ``chunks`` chunks: the native reference;
+        * ``kl_base`` — score this model against that stored reference. The token ids come
+          from the base file, so every candidate is scored on the identical stream.
         """
         binary = _bin("llama-perplexity", "LLAMA_PERPLEXITY_BIN")
-        text_path = tokens["text_path"]
         ctx = int(tokens.get("ctx", 2048))
         cmd = [
             binary,
             "-m",
             str(spec.quant.artifact_path),
             "-f",
-            str(text_path),
+            str(tokens["text_path"]),
             "-c",
             str(ctx),
+            "-b",
+            str(max(ctx, 2048)),
             "-ngl",
-            str(spec.engine.n_gpu_layers if spec.engine.n_gpu_layers is not None else -1),
+            "all",
+            "--fit",
+            "off",
             "--seed",
             str(spec.workload.seed),
+        ]
+        backend = (spec.engine.attention_backend or "auto").lower()
+        cmd += [
+            "-fa",
+            "on"
+            if backend in {"cuda-fa", "fa", "flash"}
+            else "off"
+            if "nofa" in backend
+            else "auto",
         ]
         if kl_base := tokens.get("kl_base"):
             cmd += ["--kl-divergence-base", str(kl_base), "--kl-divergence"]
         elif out_base := tokens.get("write_kl_base"):
-            cmd += ["--kl-divergence-base", str(out_base)]
+            Path(out_base).parent.mkdir(parents=True, exist_ok=True)
+            cmd += ["--kl-divergence-base", str(out_base), "--chunks", str(int(tokens["chunks"]))]
+        else:
+            raise EngineUnsupported("llama.cpp scoring needs either kl_base or write_kl_base")
 
-        proc = subprocess.run(
+        with subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=spec.protocol.timeout_s,
-            check=False,
-        )
-        blob = proc.stdout + proc.stderr
+        ) as proc:
+            self._register_child(proc.pid)
+            try:
+                blob, _ = proc.communicate(timeout=spec.protocol.timeout_s)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                blob, _ = proc.communicate()
+                raise
         if proc.returncode != 0:
-            if "out of memory" in blob.lower():
+            if any(m in blob.lower() for m in ("out of memory", "failed to allocate")):
                 raise EngineOOM(blob[-2000:])
             raise EngineUnsupported(
                 f"llama-perplexity failed (rc={proc.returncode}): {blob[-2000:]}"
             )
-
-        native: dict[str, float] = {}
-        for key, pattern in (
-            ("kl_mean", _MEAN_KLD_RE),
-            ("kl_max", _MAX_KLD_RE),
-            ("kl_p99", _P99_KLD_RE),
-            ("kl_p90", _P90_KLD_RE),
-            ("top1_agreement", _TOP1_RE),
-        ):
-            if m := pattern.search(blob):
-                native[key] = float(m.group(1))
-        if "top1_agreement" in native and native["top1_agreement"] > 1.0:
-            native["top1_agreement"] /= 100.0  # llama.cpp prints a percentage
-
-        ppl = float(m.group(1)) if (m := _PPL_RE.search(blob)) else None
+        native = parse_perplexity_output(blob)
+        facts = parse_load_facts(blob)
+        if facts.get("fully_offloaded") is False:
+            raise EngineUnsupported(
+                f"llama-perplexity offloaded only {facts['layers_offloaded']} layers"
+            )
+        self._meta.update({f"perplexity_{k}": v for k, v in facts.items()})
         return ScoreReport(
             n_positions=int(tokens.get("n_positions", 0)),
             scored_by_engine=self.name,
-            ppl=ppl,
+            ppl=native.pop("ppl", None),
             native_metrics=native,
-            extra={"cmd": cmd, "stdout_tail": blob[-4000:]},
+            extra={"cmd": cmd, "stdout_tail": blob[-6000:]},
         )
 
     # -- metadata ----------------------------------------------------------------------
