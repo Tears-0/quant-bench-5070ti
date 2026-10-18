@@ -49,9 +49,11 @@ under WSL2, falling back to device-wide usage.
 **Decided 2026-10-17: (c) native Windows**, by the repo owner. Consequences, all recorded
 per run and stated in the methodology:
 
-* NVML has **no** per-process accounting under WDDM (contrary to the hope above), so VRAM is
-  `vram_accounting: "device_wide"`; `vram_peak_attributed_mb` subtracts the pre-load
-  baseline and llama.cpp weights/KV come from the engine's own buffer reports.
+* NVML has **no** per-process accounting under WDDM; the sampler reads Windows' own
+  per-process GPU memory counters instead (`vram_accounting: "per_process_wddm"`).
+* Windows' **sysmem fallback** silently spills allocations to system RAM instead of OOMing.
+  The harness detects it (status `oom`); the owner is advised to set "Prefer No Sysmem
+  Fallback" so such runs fail fast (docs/failures.md).
 * Other processes held 4.6–4.9 GiB of the card during M1, so the practical ceiling on this
   host is ~11.3 GiB. Tier C fit/no-fit results are host-specific and figure 4 draws both the
   card total and the host-available line.
@@ -189,3 +191,67 @@ excluded by default. Revisit if power-capped fraction turns out to correlate wit
 that would make it a confound, and the analysis can exclude on it.
 
 **Status:** open for the owner to overrule.
+
+---
+
+## Q14 — Top-128 is too small a reference support for Qwen3 on WikiText-2
+
+**Measured 2026-10-17** on the Qwen3-4B BF16 reference (298,792 scored positions): the
+probability mass *outside* the stored top-128 is **1.35% on average, 21% at p99, and 93% at
+the worst position**. Truncated KL ignores the candidate's behaviour on that mass, so at
+k = 128 it is a materially incomplete estimator on high-entropy text, and every
+`topk-reference` record correctly comes out flagged `tail_mass_estimated: true` (the
+threshold is 1% mean tail mass).
+
+This does **not** affect the GGUF results: llama.cpp's native KL is full-vocabulary.
+
+**Default in force:** k = 128 as specified (§5.2), flagged. **Proposed before M4** (when
+AWQ/GPTQ/NF4/EXL3 are scored on this path): raise `configs/eval/wikitext2.yaml`
+`reference.topk` to 1024 and re-measure the tail. Cost is a ~2.5-minute reference rebuild
+and ~2.4 GB uncompressed per artifact. Alternatively, cross-check the two estimators by
+running Q8_0/Q4_K_M through both paths on the same positions.
+
+**Cross-check done 2026-10-18** (Q8_0 and Q4_K_M, dequantized and scored on the top-128
+BF16 reference vs llama.cpp's full-vocabulary KL against F16): KL 0.00115 vs 0.00165 and
+0.0582 vs 0.0509; top-1 agreement 98.24% vs 98.04% and 90.66% vs 90.96%. Same ordering,
+same magnitude, so the truncated estimator ranks quants correctly at these levels. The
+remaining differences mix three causes (positions scored, truncation, and llama.cpp's
+q8_1 activation quantization) that this pair of runs cannot separate. A larger-*k*
+reference before M4 remains the way to isolate the truncation term.
+
+---
+
+## Q15 — Downstream accuracy (lm-eval) for GGUF formats
+
+`llama-server` b11706 ignores `echo` and returns no prompt log-probs (docs/failures.md), so
+lm-eval's `gguf` backend cannot run ARC / HellaSwag / MMLU against llama.cpp. Options:
+
+| Option | Measures | Cost / risk |
+|---|---|---|
+| (a) lm-eval `hf` backend loading the GGUF via Transformers' `gguf_file=` (dequantized to fp16) | the quantized *weights* with Transformers numerics, not llama.cpp's kernels (which also quantize activations to q8_1 in MMQ) | no new dependency; record tagged `scored_by_engine: lm-eval/hf(gguf-dequantized)`; one more §7.2 cross-engine split |
+| (b) GSM8K only through llama-server; skip log-likelihood tasks for GGUF | real llama.cpp numerics, one task | incomplete §5.2 task set for the most important format family |
+| (c) `llama-cpp-python` server, which implements `echo` | real llama.cpp numerics | new dependency outside §11.1, needs its own sm_120 CUDA build |
+
+**Decided 2026-10-17: (a)**, by the repo owner, with the task-dataset downloads approved
+(allenai/ai2_arc, Rowan/hellaswag, openai/gsm8k, cais/mmlu; ~40 MB). Profile
+`configs/profiles/lmeval-tier-a.yaml`. Every GGUF lm-eval record is tagged
+`scored_by_engine: lm-eval/hf` and its run id names the engine (`transformers`), so these
+scores are never read as llama.cpp measurements.
+
+---
+
+## Q16 — GSM8K through llama.cpp instead of Transformers?
+
+Under Q15 (a) all lm-eval tasks run through Transformers, so retention compares like with
+like. For GSM8K, the one generative task, that costs ~2 h per configuration on this host:
+no fused attention kernel on Windows PyTorch (prefill spikes 2.1 GB per sequence, capping
+batch at 2) and CPU-bound decode (~29 steps/s). Log-likelihood tasks are unaffected.
+
+llama-server *can* serve generative tasks (no prompt log-probs needed): flash attention,
+native kernels, ~143–185 tok/s single-stream decode on these quants, and the F16 GGUF as an
+in-engine reference. That would also measure the GGUF quants with their real runtime
+numerics. Cost: GSM8K's retention would come from a different engine than the other three
+tasks, which the records would state (`scored_by_engine`).
+
+**Default in force:** Q15 (a) unchanged; GSM8K runs through Transformers at batch 2.
+**Status:** open for the owner — worth revisiting before Tier B, where it is ~2x slower again.

@@ -115,7 +115,7 @@ the harness fixes are covered by regression tests.
 | `--cache-prompt` / `-cram` | enabled / 8192 MiB host cache | measured iterations repeat identical prompts; a cache hit deletes prefill from TTFT | `--no-cache-prompt -cram 0` |
 | log verbosity | KV buffer sizes not logged | `vram_kv_mb` was null | `-lv 4` (lowest level that logs `llama_kv_cache: CUDA0 KV buffer size`; emits no per-token debug lines) |
 
-### No per-process VRAM accounting under Windows WDDM
+### No per-process VRAM accounting under Windows WDDM *(superseded the same day — see "Windows sysmem fallback" below: the WDDM performance counters provide it)*
 
 * NVML returns no per-process `usedGpuMemory` on this driver model, so the sampler falls
   back to device-wide usage, which includes the desktop compositor and every other
@@ -151,6 +151,107 @@ the harness fixes are covered by regression tests.
 ### Harness defect: preflight could not find `.exe` binaries via `LLAMA_CPP_BIN_DIR`
 
 * Fixed: the lookup appends `.exe` on Windows.
+
+---
+
+## Quality-pipeline findings (M2, 2026-10-17)
+
+### llama-perplexity's `PPL(base)` is biased low by its own 16-nat log-prob floor
+
+* **What:** in `--kl-divergence` mode llama-perplexity reports `Mean PPL(base)` = **10.6000**
+  for the F16 base, while the F16 run that wrote that base reported **10.6672** over the
+  identical 40,920 positions.
+* **Cause, verified:** the base file stores each log-prob as uint16 between the top logit and
+  a floor 16 nats below it (`tools/perplexity/perplexity.cpp`, `log_softmax(..., uint16_t*)`).
+  Reading the 12.4 GB base directly, **114 of 40,920 target tokens (0.28%) sit at the floor**,
+  and recomputing PPL from the stored values reproduces 10.6000 exactly. The floor credits
+  those rare targets with more probability than F16 gave them.
+* **Effect:** llama.cpp's own `Mean PPL(Q) − PPL(base)` overstates every quant's PPL cost by
+  ~0.067 here (Q8_0: +0.118 reported vs **+0.051** true). KL is unaffected: floored tokens
+  carry < e⁻¹⁶ of the base mass.
+* **Resolution:** `ppl_reference` is the F16 run's full-logit PPL from the base metadata; the
+  floored value is kept as the artifact `ppl_base_native_floored`. The two records written
+  before the fix are in `results/superseded/2026-10-17-floored-ppl-reference/` (their KL,
+  top-1 and PPL(Q) reproduced bit-for-bit on re-run).
+
+### Windows sysmem fallback: on this host, CUDA never runs out of memory
+
+* **Discovered:** an lm-eval check with `--batch_size auto` sat at "100% utilization" while
+  drawing 79 W (compute-bound load on this card draws 210–260 W). Windows' GPU counters
+  showed the process holding 14.6 GB of dedicated VRAM **plus 17.4 GB in system RAM**.
+* **Confirmed with a probe** (allocating 1 GiB tensors until past the card): 18 GiB was
+  allocated on a 16 GiB card with **no OOM**. Dedicated memory plateaued at ~15.4 GB and
+  every further allocation was served from system RAM over PCIe. This is NVIDIA's
+  "CUDA - Sysmem Fallback Policy" (driver 536.40+), whose default on Windows is to allow it.
+* **Why it matters:** §5.3 treats OOM as a first-class *result*, and Tier C's fit/no-fit
+  table is the deliverable. With fallback on, a config that does not fit would instead run
+  10–50× slower and be recorded as a valid — wildly slow — measurement. `--batch_size auto`
+  walks straight into it, because it searches for the largest batch that does not OOM.
+* **Resolution:**
+  1. The sampler reads Windows' `\GPU Process Memory(pid_*)\{Dedicated,Shared} Usage`
+     counters through `pdh.dll` (0.07 ms per sample). Validated: a 2,048 MiB tensor shows as
+     +2,104 MiB dedicated under the right PID. This also gives **true per-process VRAM on
+     Windows** (`vram_accounting: per_process_wddm`), closing the WDDM gap NVML leaves; it
+     agreed with the earlier device-minus-baseline estimate within ~20 MiB.
+  2. Spill = shared memory above 256 MiB **while** the device is within 1 GiB of full. Such
+     a run gets `status: oom` with the spilled amount in the error. Validated live: the rule
+     fires at the first spilled gigabyte and not before.
+  3. A first version flagged shared memory alone and wrongly marked two llama-perplexity
+     runs as OOM: WDDM also counts deliberately *pinned host* buffers (its ~1.2 GB logits
+     buffer) as shared. Those records are in `results/superseded/2026-10-17-false-spill-oom/`.
+  4. lm-eval uses a fixed, recorded batch size (8), never `auto`.
+  5. Child processes that hold the model (llama-perplexity, lm-eval) are now tracked, so
+     their VRAM is attributed to the run.
+* **Recommended host setting (owner action):** NVIDIA Control Panel → Manage 3D settings →
+  "CUDA - Sysmem Fallback Policy" → **Prefer No Sysmem Fallback**. With it, a config that
+  does not fit fails immediately as a clean OOM instead of crawling until detected.
+
+### Windows PyTorch has no fused attention kernel; generation is CPU-bound
+
+* **Measured (torch 2.11.0+cu128, Windows):** `torch.backends.cuda.is_flash_attention_available()`
+  is `False`, and forcing SDPA's memory-efficient kernel fails with "No available kernel". SDPA
+  therefore runs on the math path, which materializes the full attention matrix: one
+  2,338-token GSM8K prefill costs **2,079 MiB** over the weights (Qwen3-4B, fp16).
+* **Decode is launch/Python-bound, not GPU-bound:** ~29 decode steps/s regardless of batch
+  (27.9 tok/s at batch 1, 238 tok/s at batch 8). Batch is the only throughput lever for
+  generation, and the math-path prefill spike is what caps it.
+* **Consequence:** GSM8K through Transformers runs at batch 2 (the measured maximum inside the
+  VRAM budget; batch 4 spills), roughly 2 h per configuration. llama.cpp has flash attention
+  and native kernels and would be several times faster — see open question Q16.
+
+### lm-eval batch sizes are measured, not guessed
+
+* `--batch_size auto` probes for the largest batch that does not OOM; with sysmem fallback
+  on, nothing OOMs, so it spills. A single fixed size either starves short tasks or
+  overflows long ones (MMLU professional law's 5-shot prompts reach 2,158 tokens; ARC's
+  0-shot ones 177).
+* `quantbench lmeval-tune` builds every real request with lm-eval's own task objects,
+  measures peak VRAM and throughput per batch at each task's longest request, and pins the
+  fastest batch inside the budget (`configs/eval/lm_eval_batch/qwen3-4b.yaml`, every probe
+  recorded). Every over-budget probe was caught, and the spill detector flagged the ones
+  that spilled. Log-likelihood throughput plateaus around 7k tok/s by batch 4–8: the GPU is
+  already compute-saturated, so larger batches would only add VRAM risk.
+
+### `llama-server` (b11706) cannot serve prompt log-probs, so lm-eval's GGUF backend cannot run log-likelihood tasks
+
+* **Probe:** `POST /v1/completions` with `"echo": true, "logprobs": 10, "max_tokens": 1`
+  returned HTTP 200 with only the *generated* token's log-probs — `echo` was ignored. The
+  server source has an explicit `throw std::runtime_error("Only no echo is supported")` on
+  another code path.
+* **Effect:** lm-eval's `gguf` backend needs prompt log-probs (`text_offset`, `tokens`,
+  `token_logprobs`) for every log-likelihood task — ARC, HellaSwag, MMLU. Only generative
+  GSM8K could run against llama-server.
+* **Status:** open question Q15 (how to get downstream accuracy for GGUF).
+
+### Top-128 reference support leaves 1.35% of the probability mass unaccounted for
+
+* Measured on the Qwen3-4B BF16 reference: tail mass mean 1.35%, p99 21%, max 93%. See open
+  question Q14. GGUF KL is unaffected (full-vocabulary).
+
+### Tokenizers agree: llama.cpp and Transformers produce the identical stream
+
+* Not a failure — recorded because it was *checked*: the 81,920 token ids stored in the
+  llama.cpp KL base match the hashed Transformers stream exactly (`token_stream_verified`).
 
 ---
 

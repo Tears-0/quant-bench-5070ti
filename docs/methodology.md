@@ -6,7 +6,7 @@ this repo makes is stated explicitly, because ambiguous metric definitions are t
 most common reason benchmark repos get dismissed.
 
 Snapshot date: M1 `smoke` latency runs on 2026-10-17 (driver 617.14, llama.cpp b11706,
-native Windows 11). Quality (M2) has not been measured yet.
+native Windows 11), and M2 quality runs the same day: Tier A Q8_0 and Q4_K_M against both references.
 
 ---
 
@@ -94,6 +94,30 @@ contribution to KL cannot be computed exactly. Two consequences, both recorded p
 The exact path is preferred everywhere it is available: the scoring engines accept the
 reference's top-k ids and return their log-probs at exactly those positions.
 
+### Downstream accuracy (lm-eval)
+
+* **Engine:** lm-eval's `hf` backend for the reference and every quant (open question Q15 (a);
+  llama-server serves no prompt log-probs). GGUF quants are dequantized **once** to fp16
+  safetensors (`quantbench models dequantize`), rebuilt under the original HF config with a
+  strict tensor-name match, and saved with the original HF tokenizer.
+* **Validation gate:** before any lm-eval run, each dequantized checkpoint is scored on the
+  BF16 top-k reference and must reproduce llama.cpp's own quality for that quant. Measured:
+  Q8_0 KL 0.00115 / top-1 98.24% (llama.cpp: 0.00165 / 98.04%); Q4_K_M 0.0582 / 90.66%
+  (llama.cpp: 0.0509 / 90.96%).
+* **One compute dtype, fp16, for all configurations**, so weights are the only variable.
+  fp16 was checked against the BF16 reference on 2,047 positions: NLL 2.31615 vs 2.3166,
+  top-1 agreement 98.9%.
+* **Batch size per task, measured** (`quantbench lmeval-tune`, see docs/failures.md) and
+  pinned in `configs/eval/lm_eval_batch/<model>.yaml`. Fixed per task, so scores do not depend
+  on how much VRAM happened to be free.
+* **Jobs:** one `quantbench.lmeval_job` subprocess per configuration loads the model once,
+  then runs the tasks strictly in sequence, each at its measured batch size, saving each as
+  it finishes; a task whose results exist is skipped on resume. (A process per task cost
+  ~2.5 minutes of imports and model loading per task, against as little as 40 seconds of
+  compute.) The job reports its real interpreter PID, because a Windows venv's `python.exe`
+  is a launcher, so VRAM and spill are attributed to the process that holds the model.
+* **Seeds:** `--seed 1337` (random, numpy, torch and few-shot sampling).
+
 ### The FP16 reference cache
 
 An 8B model in BF16 does not fit in 16 GB, so the FP16 model cannot be co-resident with
@@ -107,6 +131,32 @@ the quantized model on Tiers B and C. Therefore:
 
 Tier A (4B) runs FP16 live on-GPU, which is what makes the cached-reference path auditable:
 the same model must produce the same numbers both ways.
+
+### Two KL estimators, labelled on every record
+
+`quality.kl_div.estimator` says which one produced a number. They are not pooled.
+
+| | `topk-reference` | `llama-perplexity` |
+|---|---|---|
+| Used for | Transformers, ExLlamaV3, vLLM (AWQ, GPTQ, FP8, NF4, EXL3) | GGUF formats |
+| Reference | HF BF16 over the hashed id stream | the F16 GGUF, inside llama.cpp |
+| Support | reference top-128, tail mass measured and recorded | full vocabulary; base log-probs stored as uint16 with a 16-nat floor |
+| Positions | every position of each non-overlapping 2,048-token chunk except the first | positions 1,024–2,046 of each 2,048-token chunk, first 40 chunks (`native_kld_chunks`) |
+| Top-k agreement | top-1 and top-5 | top-1 only ("Same top p") |
+
+The GGUF path is llama.cpp's own base-file workflow, which §5.2.3 prefers over a
+reimplementation. Its base stores ~2 bytes × vocabulary per scored token (~304 KB for
+Qwen3's 151,936 tokens), so it covers a fixed, recorded 40 chunks (40,920 scored positions)
+rather than the whole corpus. The base file also stores the exact token ids it scored; the
+worker compares them with the hashed reference-tokenizer stream and records
+`token_stream_verified`, so §6.6 is checked rather than assumed.
+
+Every record carries `ppl_reference`, the reference's full-logit perplexity over the *same*
+positions (for GGUF: the F16 run's own PPL, **not** llama-perplexity's `Mean PPL(base)`, which
+is recomputed from floored stored log-probs and reads ~0.6% low — docs/failures.md),
+so a PPL delta never mixes chunking conventions. `ppl_config.add_bos` is the *effective*
+value: Qwen3's tokenizer has no BOS token, so it is `false` even though the eval config
+requests one.
 
 ---
 
@@ -137,7 +187,13 @@ Every record states `vram_accounting`:
 
 * `per_process` — NVML attributes memory to the worker's PID and any engine-server PIDs it
   registered. `vram_peak_attributed_mb` equals `vram_peak_nvsmi_mb`.
-* `device_wide` — the driver offers no per-process figure (Windows WDDM, WSL2). The sampler
+* `per_process_wddm` — Windows: NVML has no per-process figure under WDDM, so the sampler
+  reads the OS's `\GPU Process Memory(pid_*)\Dedicated Usage` counter for the same PIDs
+  (validated against a known 2,048 MiB allocation). The companion `Shared Usage` counter is
+  recorded as `vram_shared_peak_mb`: pinned host buffers, plus — when the device is within
+  1 GiB of full — device allocations spilled to system RAM by the driver's sysmem fallback.
+  Such a spill means the configuration did not fit, and the run is `status: oom`.
+* `device_wide` — no per-process figure at all (WSL2, or the counters unavailable). The sampler
   records device-wide usage, `vram_baseline_nvsmi_mb` is the usage just before load, and
   `vram_peak_attributed_mb = vram_peak_nvsmi_mb − baseline`. Other processes' allocations
   that change *during* a run are indistinguishable from the run's own; the baseline is
@@ -274,14 +330,33 @@ If the measurement host is WSL2, batch-1 latency is noisier than native Linux an
 per-process VRAM accounting is unavailable. `is_wsl` is recorded per run and surfaces in
 the README's environment table.
 
-### 6.7 Synthetic prompts
+### 6.7 A shared desktop GPU: within-run IQR understates between-session variation
+
+The measurement host is a desktop, and the compositor, browser and any other GPU clients
+share the card. Their *work* is not controlled, only their memory is subtracted. Observed on
+2026-10-17, same spec (`qwen3-4b__gguf-q4-k-m__llama-cpp__b1__ctx512__gen128__latency`), same
+build, same day:
+
+| session | decode tok/s p50 (IQR) | other processes' VRAM | power-capped |
+|---|---|---|---|
+| 1 (archived in `results/superseded/2026-10-17-device-wide-vram/`) | 184.7 (0.7) | ~4.7 GiB | 21% |
+| 2 (current record) | 199.4 (3.9) | ~2.1 GiB | 0% |
+
+The two IQRs are far apart, so the within-run IQR is not the whole uncertainty: rankings
+between configurations closer than ~8% should not be read from single sessions. Q8_0 moved
+only 0.4% across the same two sessions, so the effect is not uniform. Mitigations, in order of
+strength: close other GPU clients before a run (record what was open), interleave several
+sessions per configuration in the `core` profile so session-to-session variance enters the
+IQR, and treat cross-session differences below that spread as ties.
+
+### 6.8 Synthetic prompts
 
 When no pinned evaluation stream exists for a model, latency prompts fall back to seeded
 synthetic token ids. These are comparable across engines but are **not** a realistic text
 workload; the record carries `prompt_source` and a warning, and such runs are excluded from
 any claim about real-text prefill.
 
-### 6.8 The mock engine
+### 6.9 The mock engine
 
 `--dry-run` and CI use a mock engine that fabricates timings. Records it produces are
 marked `synthetic: true`, written to a git-ignored directory, refused by the analysis layer
